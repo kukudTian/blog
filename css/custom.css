@@ -1,0 +1,83 @@
+/* 相关文章推荐样式 */
+.related-posts {
+  margin-top: 40px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.related-posts h3 {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #007bff;
+}
+
+.related-posts ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.related-posts li {
+  padding: 12px 0;
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.related-posts li:last-child {
+  border-bottom: none;
+}
+
+.related-posts a {
+  color: #007bff;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  flex: 1;
+  margin-right: 15px;
+  transition: color 0.3s;
+}
+
+.related-posts a:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.related-posts .date {
+  color: #6c757d;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .related-posts {
+    margin-top: 30px;
+    padding: 15px;
+  }
+  
+  .related-posts h3 {
+    font-size: 16px;
+  }
+  
+  .related-posts li {
+    padding: 10px 0;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .related-posts a {
+    font-size: 14px;
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+  
+  .related-posts .date {
+    font-size: 12px;
+  }
+}
