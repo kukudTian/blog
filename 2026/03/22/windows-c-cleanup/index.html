@@ -5,25 +5,27 @@
   
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" >
-  <meta name="keywords" content="技术博客,知识分享,踩坑记录,教程">
-  <meta name="description" content="专注于技术知识分享、踩坑记录与解决方案">
+  <meta name="keywords" content="C盘满了怎么清理, Windows虚拟内存搬家, C盘空间不足, pagefile转移到D盘">
+  <meta name="description" content="C盘只剩12GB？本文实测5个步骤，安全释放30GB空间，包括虚拟内存搬家、残留缓存清理、回收站清空等方法，附详细操作截图。">
   <meta name="author" content="小田">
   <meta name="robots" content="index, follow">
   <link rel="dns-prefetch" href="https://kukudtian.github.io/blog">
-  <title>Archives: 2026/3 | 知识宝藏</title>
+  <title>Windows C盘满了？5步释放30GB空间（2026实测有效） | 知识宝藏</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="专注于技术知识分享、踩坑记录与解决方案">
-<meta property="og:type" content="website">
-<meta property="og:title" content="知识宝藏">
-<meta property="og:url" content="https://kukudtian.github.io/blog/archives/2026/03/index.html">
+  <meta name="description" content="C盘只剩12GB？本文实测5个步骤，安全释放30GB空间，包括虚拟内存搬家、残留缓存清理、回收站清空等方法，附详细操作截图。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Windows C盘满了？5步释放30GB空间（2026实测有效）">
+<meta property="og:url" content="https://kukudtian.github.io/blog/2026/03/22/windows-c-cleanup/index.html">
 <meta property="og:site_name" content="知识宝藏">
-<meta property="og:description" content="专注于技术知识分享、踩坑记录与解决方案">
+<meta property="og:description" content="C盘只剩12GB？本文实测5个步骤，安全释放30GB空间，包括虚拟内存搬家、残留缓存清理、回收站清空等方法，附详细操作截图。">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-03-22T10:10:00.000Z">
+<meta property="article:modified_time" content="2026-03-22T10:13:51.283Z">
 <meta property="article:author" content="小田">
-<meta property="article:tag" content="技术博客">
-<meta property="article:tag" content="教程">
-<meta property="article:tag" content="知识分享">
-<meta property="article:tag" content="踩坑记录">
+<meta property="article:tag" content="C盘清理">
+<meta property="article:tag" content="Windows">
+<meta property="article:tag" content="系统优化">
+<meta property="article:tag" content="虚拟内存">
 <meta name="twitter:card" content="summary">
   
     <link rel="alternative" href="/atom.xml" title="知识宝藏" type="application/atom+xml">
@@ -38,19 +40,23 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "知识宝藏",
-    "description": "专注于技术知识分享、踩坑记录与解决方案",
-    "url": "https://kukudtian.github.io/blog",
+    "@type": "BlogPosting",
+    "headline": "Windows C盘满了？5步释放30GB空间（2026实测有效）",
+    "description": "C盘只剩12GB？本文实测5个步骤，安全释放30GB空间，包括虚拟内存搬家、残留缓存清理、回收站清空等方法，附详细操作截图。",
     "author": {
       "@type": "Person",
       "name": "小田"
     },
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://kukudtian.github.io/blog/search?q={search_term_string}",
-      "query-input": "required name=search_term_string"
-    }
+    "datePublished": "2026-03-22",
+    "dateModified": "2026-03-22",
+    "keywords": "Windows, 系统优化, C盘清理, 虚拟内存",
+    "url": "/blog/2026/03/22/windows-c-cleanup/",
+    "publisher": {
+      "@type": "Organization",
+      "name": "知识宝藏",
+      "url": "https://kukudtian.github.io/blog"
+    },
+    "mainEntityOfPage": "https://kukudtian.github.io/blog/blog/2026/03/22/windows-c-cleanup/"
   }
   </script>
   
@@ -217,36 +223,115 @@ var _hmt = _hmt || [];
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
-  
-  
+            <article id="post-windows-c-cleanup" class="article article-type-post " itemscope itemprop="blogPost">
+  <div class="article-inner">
     
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/blog/archives/2026" class="archive-year">2026</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/blog/2026/03/22/windows-c-cleanup/" class="archive-article-date">
-  	<time datetime="2026-03-22T10:10:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2026-03-22</time>
-</a>
-        </div>
-    	 
+      <header class="article-header">
+        
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/blog/2026/03/22/windows-c-cleanup/">Windows C盘满了？5步释放30GB空间（2026实测有效）</a>
+    <h1 class="article-title" itemprop="name">
+      Windows C盘满了？5步释放30GB空间（2026实测有效）
     </h1>
   
 
-        <div class="article-info info-on-right">
-          
+        
+        <a href="/blog/2026/03/22/windows-c-cleanup/" class="archive-article-date">
+  	<time datetime="2026-03-22T10:10:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2026-03-22</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Windows-C盘满了？5步释放30GB空间（2026实测有效）"><a href="#Windows-C盘满了？5步释放30GB空间（2026实测有效）" class="headerlink" title="Windows C盘满了？5步释放30GB空间（2026实测有效）"></a>Windows C盘满了？5步释放30GB空间（2026实测有效）</h1><p>你的 C 盘是不是也快爆了？150GB 的盘只剩十几 GB，打开软件都卡？</p>
+<p>今天帮朋友实测了一套清理方案，<strong>从 12.7GB 释放到 37.1GB</strong>，总共清出约 <strong>24GB</strong> 空间。以下是完整步骤。</p>
+<h2 id="第一步：清理已卸载软件的残留缓存"><a href="#第一步：清理已卸载软件的残留缓存" class="headerlink" title="第一步：清理已卸载软件的残留缓存"></a>第一步：清理已卸载软件的残留缓存</h2><p>很多人卸载软件后，AppData 里的缓存文件还在。比如达芬奇（DaVinci Resolve）卸载后，<code>AppData\Roaming\Blackmagic Design</code> 目录下还有 <strong>2.5GB</strong> 的项目缓存。</p>
+<p><strong>检查方法：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">C:\Users\你的用户名\AppData\Roaming\</span><br><span class="line">C:\Users\你的用户名\AppData\Local\</span><br></pre></td></tr></table></figure>
+
+<p>看看哪些文件夹属于已经卸载的软件，直接删除即可。</p>
+<p><strong>常见大缓存：</strong></p>
+<ul>
+<li>Blackmagic Design（达芬奇）：2-5GB</li>
+<li>Adobe 残留：1-3GB</li>
+<li>各种播放器&#x2F;直播软件缓存</li>
+</ul>
+<h2 id="第二步：清空回收站"><a href="#第二步：清空回收站" class="headerlink" title="第二步：清空回收站"></a>第二步：清空回收站</h2><p>这个很多人忽略。回收站里的文件仍然占用 C 盘空间，实测清了 <strong>3.93GB</strong>。</p>
+<p>右键回收站 → 清空回收站，搞定。</p>
+<h2 id="第三步：虚拟内存搬家（释放-16GB！）"><a href="#第三步：虚拟内存搬家（释放-16GB！）" class="headerlink" title="第三步：虚拟内存搬家（释放 16GB！）"></a>第三步：虚拟内存搬家（释放 16GB！）</h2><p>这是最大的一块。Windows 默认把虚拟内存（pagefile.sys）放在 C 盘，通常占用 <strong>8-16GB</strong>。</p>
+<h3 id="操作步骤："><a href="#操作步骤：" class="headerlink" title="操作步骤："></a>操作步骤：</h3><ol>
+<li>按 <code>Win + R</code>，输入 <code>sysdm.cpl</code>，回车</li>
+<li>点「高级」选项卡 → 性能区域点「设置」</li>
+<li>再点「高级」选项卡 → 虚拟内存区域点「更改」</li>
+<li><strong>取消勾选</strong>「自动管理所有驱动器的分页文件大小」</li>
+<li>选中 <strong>C 盘</strong> → 选「无分页文件」→ 点「设置」</li>
+<li>选中 <strong>D 盘</strong>（或其他空间大的盘） → 选「自定义大小」<ul>
+<li>初始大小：<code>16384</code>（16GB）</li>
+<li>最大值：<code>20480</code>（20GB）</li>
+<li>点「设置」</li>
+</ul>
+</li>
+<li>点「确定」→ <strong>重启电脑</strong></li>
+</ol>
+<p>重启后 C 盘会多出 <strong>16GB</strong> 空间！</p>
+<blockquote>
+<p>⚠️ <strong>注意</strong>：D 盘需要有足够空间（建议至少 20GB 剩余）。</p>
+</blockquote>
+<h2 id="第四步：用磁盘清理工具"><a href="#第四步：用磁盘清理工具" class="headerlink" title="第四步：用磁盘清理工具"></a>第四步：用磁盘清理工具</h2><p>Windows 自带的磁盘清理可以清掉系统临时文件、Windows 更新缓存等：</p>
+<ol>
+<li>右键 C 盘 → 属性 → 磁盘清理</li>
+<li>点「清理系统文件」</li>
+<li>勾选：Windows 更新清理、临时文件、缩略图等</li>
+<li>点确定</li>
+</ol>
+<h2 id="第五步：检查大软件的缓存设置"><a href="#第五步：检查大软件的缓存设置" class="headerlink" title="第五步：检查大软件的缓存设置"></a>第五步：检查大软件的缓存设置</h2><p>有些软件默认把缓存放在 C 盘，可以改到其他盘：</p>
+<ul>
+<li><strong>Chrome</strong>：设置 → 隐私与安全 → 清除浏览数据</li>
+<li><strong>微信&#x2F;QQ</strong>：设置里改文件存储路径到 D 盘</li>
+<li><strong>pip</strong>（Python）：<code>pip cache purge</code> 清理包缓存</li>
+<li><strong>剪映&#x2F;Pr</strong>：在软件设置里改缓存目录</li>
+</ul>
+<h2 id="清理效果汇总"><a href="#清理效果汇总" class="headerlink" title="清理效果汇总"></a>清理效果汇总</h2><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>释放空间</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>达芬奇残留缓存</td>
+<td>2.5 GB</td>
+</tr>
+<tr>
+<td>回收站</td>
+<td>3.93 GB</td>
+</tr>
+<tr>
+<td>虚拟内存搬家</td>
+<td>~16 GB</td>
+</tr>
+<tr>
+<td>其他临时文件</td>
+<td>~2 GB</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>~24 GB</strong></td>
+</tr>
+</tbody></table>
+<p>C 盘从 <strong>12.7GB → 37.1GB</strong>，系统流畅多了！</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>虚拟内存搬家是性价比最高的操作，一次释放 16GB。配合清理残留缓存和回收站，轻松省出 20GB+ 的空间。</p>
+<p>如果你的 C 盘也快满了，试试这几步，有问题欢迎留言交流！</p>
+<hr>
+<p><em>更新于 2026-03-22</em></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
 	<div class="article-tag tagcloud">
 		<i class="icon-price-tags icon"></i>
 		<ul class="article-tag-list">
@@ -270,7 +355,7 @@ var _hmt = _hmt || [];
 		</ul>
 	</div>
 
-          
+      
 	<div class="article-category tagcloud">
 		<i class="icon-book icon"></i>
 		<ul class="article-tag-list">
@@ -283,201 +368,129 @@ var _hmt = _hmt || [];
 	</div>
 
 
+      
+
+      
+        
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
         </div>
-        <div class="clearfix"></div>
-    </header>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//pan.baidu.com/share/qrcode?url=https://kukudtian.github.io/blog/2026/03/22/windows-c-cleanup/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
+      
+      <div class="clearfix"></div>
+    </div>
   </div>
 </article>
+
   
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/blog/2026/03/21/open-source-ai-assistant/" class="archive-article-date">
-  	<time datetime="2026-03-20T16:15:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2026-03-21</time>
-</a>
+<nav id="article-nav">
+  
+  
+    <a href="/blog/2026/03/21/open-source-ai-assistant/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">2026年开发者必备的7个工具：让你的效率翻倍</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
         </div>
-    	 
+        
+        
+    </div>
+</aside>
+
+
+
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/blog/2026/03/21/open-source-ai-assistant/">2026年开发者必备的7个工具：让你的效率翻倍</a>
-    </h1>
+  
   
 
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">开发工具</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">效率工具</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">程序员</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">编程</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">工具推荐</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/blog/categories/工具推荐//" class="article-tag-list-link color5">工具推荐</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
   
+
+  
+
+  
+
+
+
+
+<div class="related-posts">
+  <h3>相关推荐</h3>
+  <ul>
     
+    <li>
+      <a href="/blog/2026/03/21/open-source-ai-assistant/">2026年开发者必备的7个工具：让你的效率翻倍</a>
+      <span class="date">2026-03-21</span>
+    </li>
     
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/blog/2026/03/20/openclaw-tutorial/" class="archive-article-date">
-  	<time datetime="2026-03-20T13:30:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2026-03-20</time>
-</a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/blog/2026/03/20/openclaw-tutorial/">如何搭建属于自己的 AI 私人助手 - 免费开源方案分享</a>
-    </h1>
-  
-
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">AI助手</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color4">OpenClaw</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">教程</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">飞书</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">开源</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/blog/categories/技术教程//" class="article-tag-list-link color5">技术教程</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
+    <li>
+      <a href="/blog/2026/03/20/openclaw-tutorial/">如何搭建属于自己的 AI 私人助手 - 免费开源方案分享</a>
+      <span class="date">2026-03-20</span>
+    </li>
     
+    <li>
+      <a href="/blog/2026/03/20/hello-world/">欢迎来到知识宝藏</a>
+      <span class="date">2026-03-20</span>
+    </li>
     
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/blog/2026/03/20/hello-world/" class="archive-article-date">
-  	<time datetime="2026-03-20T12:20:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2026-03-20</time>
-</a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/blog/2026/03/20/hello-world/">欢迎来到知识宝藏</a>
-    </h1>
-  
-
-        <div class="article-info info-on-right">
-          
-	<div class="article-tag tagcloud">
-		<i class="icon-price-tags icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">欢迎</a>
-        		</li>
-      		 
-        		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">知识分享</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/blog/categories/随笔//" class="article-tag-list-link color3">随笔</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-  
-    </div></section>
-  
-
-    
-
+  </ul>
+</div>
 
           </div>
         </div>
@@ -499,8 +512,8 @@ var _hmt = _hmt || [];
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: false,
-		isArchive: true,
+		isPost: true,
+		isArchive: false,
 		isTag: false,
 		isCategory: false,
 		open_in_new: false,

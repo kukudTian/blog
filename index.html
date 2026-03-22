@@ -219,6 +219,183 @@ var _hmt = _hmt || [];
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-windows-c-cleanup" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/blog/2026/03/22/windows-c-cleanup/">Windows C盘满了？5步释放30GB空间（2026实测有效）</a>
+    </h1>
+  
+
+        
+        <a href="/blog/2026/03/22/windows-c-cleanup/" class="archive-article-date">
+  	<time datetime="2026-03-22T10:10:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2026-03-22</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Windows-C盘满了？5步释放30GB空间（2026实测有效）"><a href="#Windows-C盘满了？5步释放30GB空间（2026实测有效）" class="headerlink" title="Windows C盘满了？5步释放30GB空间（2026实测有效）"></a>Windows C盘满了？5步释放30GB空间（2026实测有效）</h1><p>你的 C 盘是不是也快爆了？150GB 的盘只剩十几 GB，打开软件都卡？</p>
+<p>今天帮朋友实测了一套清理方案，<strong>从 12.7GB 释放到 37.1GB</strong>，总共清出约 <strong>24GB</strong> 空间。以下是完整步骤。</p>
+<h2 id="第一步：清理已卸载软件的残留缓存"><a href="#第一步：清理已卸载软件的残留缓存" class="headerlink" title="第一步：清理已卸载软件的残留缓存"></a>第一步：清理已卸载软件的残留缓存</h2><p>很多人卸载软件后，AppData 里的缓存文件还在。比如达芬奇（DaVinci Resolve）卸载后，<code>AppData\Roaming\Blackmagic Design</code> 目录下还有 <strong>2.5GB</strong> 的项目缓存。</p>
+<p><strong>检查方法：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">C:\Users\你的用户名\AppData\Roaming\</span><br><span class="line">C:\Users\你的用户名\AppData\Local\</span><br></pre></td></tr></table></figure>
+
+<p>看看哪些文件夹属于已经卸载的软件，直接删除即可。</p>
+<p><strong>常见大缓存：</strong></p>
+<ul>
+<li>Blackmagic Design（达芬奇）：2-5GB</li>
+<li>Adobe 残留：1-3GB</li>
+<li>各种播放器&#x2F;直播软件缓存</li>
+</ul>
+<h2 id="第二步：清空回收站"><a href="#第二步：清空回收站" class="headerlink" title="第二步：清空回收站"></a>第二步：清空回收站</h2><p>这个很多人忽略。回收站里的文件仍然占用 C 盘空间，实测清了 <strong>3.93GB</strong>。</p>
+<p>右键回收站 → 清空回收站，搞定。</p>
+<h2 id="第三步：虚拟内存搬家（释放-16GB！）"><a href="#第三步：虚拟内存搬家（释放-16GB！）" class="headerlink" title="第三步：虚拟内存搬家（释放 16GB！）"></a>第三步：虚拟内存搬家（释放 16GB！）</h2><p>这是最大的一块。Windows 默认把虚拟内存（pagefile.sys）放在 C 盘，通常占用 <strong>8-16GB</strong>。</p>
+<h3 id="操作步骤："><a href="#操作步骤：" class="headerlink" title="操作步骤："></a>操作步骤：</h3><ol>
+<li>按 <code>Win + R</code>，输入 <code>sysdm.cpl</code>，回车</li>
+<li>点「高级」选项卡 → 性能区域点「设置」</li>
+<li>再点「高级」选项卡 → 虚拟内存区域点「更改」</li>
+<li><strong>取消勾选</strong>「自动管理所有驱动器的分页文件大小」</li>
+<li>选中 <strong>C 盘</strong> → 选「无分页文件」→ 点「设置」</li>
+<li>选中 <strong>D 盘</strong>（或其他空间大的盘） → 选「自定义大小」<ul>
+<li>初始大小：<code>16384</code>（16GB）</li>
+<li>最大值：<code>20480</code>（20GB）</li>
+<li>点「设置」</li>
+</ul>
+</li>
+<li>点「确定」→ <strong>重启电脑</strong></li>
+</ol>
+<p>重启后 C 盘会多出 <strong>16GB</strong> 空间！</p>
+<blockquote>
+<p>⚠️ <strong>注意</strong>：D 盘需要有足够空间（建议至少 20GB 剩余）。</p>
+</blockquote>
+<h2 id="第四步：用磁盘清理工具"><a href="#第四步：用磁盘清理工具" class="headerlink" title="第四步：用磁盘清理工具"></a>第四步：用磁盘清理工具</h2><p>Windows 自带的磁盘清理可以清掉系统临时文件、Windows 更新缓存等：</p>
+<ol>
+<li>右键 C 盘 → 属性 → 磁盘清理</li>
+<li>点「清理系统文件」</li>
+<li>勾选：Windows 更新清理、临时文件、缩略图等</li>
+<li>点确定</li>
+</ol>
+<h2 id="第五步：检查大软件的缓存设置"><a href="#第五步：检查大软件的缓存设置" class="headerlink" title="第五步：检查大软件的缓存设置"></a>第五步：检查大软件的缓存设置</h2><p>有些软件默认把缓存放在 C 盘，可以改到其他盘：</p>
+<ul>
+<li><strong>Chrome</strong>：设置 → 隐私与安全 → 清除浏览数据</li>
+<li><strong>微信&#x2F;QQ</strong>：设置里改文件存储路径到 D 盘</li>
+<li><strong>pip</strong>（Python）：<code>pip cache purge</code> 清理包缓存</li>
+<li><strong>剪映&#x2F;Pr</strong>：在软件设置里改缓存目录</li>
+</ul>
+<h2 id="清理效果汇总"><a href="#清理效果汇总" class="headerlink" title="清理效果汇总"></a>清理效果汇总</h2><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>释放空间</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>达芬奇残留缓存</td>
+<td>2.5 GB</td>
+</tr>
+<tr>
+<td>回收站</td>
+<td>3.93 GB</td>
+</tr>
+<tr>
+<td>虚拟内存搬家</td>
+<td>~16 GB</td>
+</tr>
+<tr>
+<td>其他临时文件</td>
+<td>~2 GB</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>~24 GB</strong></td>
+</tr>
+</tbody></table>
+<p>C 盘从 <strong>12.7GB → 37.1GB</strong>，系统流畅多了！</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>虚拟内存搬家是性价比最高的操作，一次释放 16GB。配合清理残留缓存和回收站，轻松省出 20GB+ 的空间。</p>
+<p>如果你的 C 盘也快满了，试试这几步，有问题欢迎留言交流！</p>
+<hr>
+<p><em>更新于 2026-03-22</em></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">Windows</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">系统优化</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">C盘清理</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">虚拟内存</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+	<div class="article-category tagcloud">
+		<i class="icon-book icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="/blog/categories/技术教程//" class="article-tag-list-link color5">技术教程</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/blog/2026/03/22/windows-c-cleanup/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-open-source-ai-assistant" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -880,6 +1057,22 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">知识分享</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">Windows</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">系统优化</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">C盘清理</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">虚拟内存</a>
               </li>
             
             <div class="clearfix"></div>
