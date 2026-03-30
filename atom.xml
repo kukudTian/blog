@@ -10,7 +10,24 @@
   <rights>All rights reserved 2026, 小田</rights>
   <subtitle>分享知识与踩坑经验</subtitle>
   <title>知识宝藏</title>
-  <updated>2026-03-29T04:01:18.417Z</updated>
+  <updated>2026-03-30T04:01:53.948Z</updated>
+  <entry>
+    <author>
+      <name>小田</name>
+    </author>
+    <category term="技术" scheme="https://aitian.site/categories/%E6%8A%80%E6%9C%AF/"/>
+    <category term="人工智能" scheme="https://aitian.site/tags/%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD/"/>
+    <category term="AI Agent" scheme="https://aitian.site/tags/AI-Agent/"/>
+    <category term="多智能体" scheme="https://aitian.site/tags/%E5%A4%9A%E6%99%BA%E8%83%BD%E4%BD%93/"/>
+    <category term="技术趋势" scheme="https://aitian.site/tags/%E6%8A%80%E6%9C%AF%E8%B6%8B%E5%8A%BF/"/>
+    <category term="2026" scheme="https://aitian.site/tags/2026/"/>
+    <id>https://aitian.site/2026/03/30/2026-multi-agent-revolution/</id>
+    <link href="https://aitian.site/2026/03/30/2026-multi-agent-revolution/"/>
+    <published>2026-03-30T04:00:00.000Z</published>
+    <summary>2026年被称为&quot;多智能体上岗元年&quot;，AI正从单打独斗的聊天机器人进化为协作式智能体网络。本文解读多智能体系统的核心原理、应用场景和未来趋势。</summary>
+    <title>2026年多智能体元年：从聊天机器人到AI协作的革命</title>
+    <updated>2026-03-30T04:01:53.948Z</updated>
+  </entry>
   <entry>
     <author>
       <name>小田</name>
