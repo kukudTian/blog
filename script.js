@@ -83,6 +83,7 @@ function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = 
   const targetArea = clampArea(area, imageData);
   const alphaThreshold = options.alphaThreshold ?? 0.002;
   const strength = options.strength ?? 1;
+  const protectDarkPixels = options.protectDarkPixels ?? false;
 
   for (let row = 0; row < targetArea.height; row += 1) {
     for (let col = 0; col < targetArea.width; col += 1) {
@@ -93,6 +94,11 @@ function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = 
 
       const target = 4 * ((targetArea.y + row) * imageData.width + (targetArea.x + col));
       alpha = Math.min(alpha * strength, 0.99);
+      if (protectDarkPixels) {
+        const maxSafeAlpha = Math.min(data[target], data[target + 1], data[target + 2]) / 255 * 0.88;
+        alpha = Math.min(alpha, maxSafeAlpha);
+        if (alpha < alphaThreshold) continue;
+      }
       const remaining = 1 - alpha;
       for (let channel = 0; channel < 3; channel += 1) {
         const restored = (data[target + channel] - 255 * alpha) / remaining;
@@ -278,12 +284,14 @@ function scoreWatermarkCandidate(imageData, alphaMap, sourceSize, area) {
 function findWatermarkAreaInSelection(imageData, alphaMap, sourceSize, selectedArea) {
   const searchArea = clampArea(selectedArea, imageData);
   if (searchArea.width < sourceSize || searchArea.height < sourceSize) {
+    const centerX = searchArea.x + searchArea.width / 2;
+    const centerY = searchArea.y + searchArea.height / 2;
     return {
       area: {
-        x: searchArea.x + (searchArea.width - Math.min(sourceSize, searchArea.width)) / 2,
-        y: searchArea.y + (searchArea.height - Math.min(sourceSize, searchArea.height)) / 2,
-        width: Math.min(sourceSize, searchArea.width),
-        height: Math.min(sourceSize, searchArea.height)
+        x: Math.max(0, Math.min(imageData.width - sourceSize, Math.round(centerX - sourceSize / 2))),
+        y: Math.max(0, Math.min(imageData.height - sourceSize, Math.round(centerY - sourceSize / 2))),
+        width: sourceSize,
+        height: sourceSize
       },
       score: 1
     };
@@ -305,6 +313,17 @@ function findWatermarkAreaInSelection(imageData, alphaMap, sourceSize, selectedA
   }
 
   return best;
+}
+
+function forceFixedWatermarkArea(imageData, area, sourceSize) {
+  const centerX = area.x + area.width / 2;
+  const centerY = area.y + area.height / 2;
+  return {
+    x: Math.max(0, Math.min(imageData.width - sourceSize, Math.round(centerX - sourceSize / 2))),
+    y: Math.max(0, Math.min(imageData.height - sourceSize, Math.round(centerY - sourceSize / 2))),
+    width: sourceSize,
+    height: sourceSize
+  };
 }
 
 async function processImage() {
@@ -340,7 +359,7 @@ async function processImage() {
         alert("没有在框选区域里找到明显的 Gemini 水印，请把选区缩小到水印附近再试。");
         return;
       }
-      area = match.area;
+      area = forceFixedWatermarkArea(imageData, match.area, config.logoSize);
     } else {
       config = getWatermarkConfig(image.width, image.height);
       area = getWatermarkArea(image.width, image.height, config);
@@ -349,7 +368,8 @@ async function processImage() {
     const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
     removeWatermarkPixels(imageData, alphaMap, config.logoSize, area, {
       alphaThreshold: currentMode === "manual" ? 0.06 : 0.002,
-      strength: 1
+      strength: currentMode === "manual" ? 0.82 : 1,
+      protectDarkPixels: currentMode === "manual"
     });
     context.putImageData(imageData, 0, 0);
 
