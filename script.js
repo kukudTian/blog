@@ -280,7 +280,7 @@ function downloadProcessedImage() {
 
   const link = document.createElement("a");
   link.href = processedDataUrl;
-  link.download = "gemini-watermark-removed.png";
+  link.download = "aitian-gemini-watermark-removed.png";
   link.click();
 }
 

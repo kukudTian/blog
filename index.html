@@ -1,115 +1,225 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gemini 去水印工具</title>
-    <meta name="description" content="一键去除 Google Gemini 生成图片中的水印。免费、快速、无需上传到服务器，保护您的隐私。还原图片原始画质。">
-    <meta name="keywords" content="Gemini去水印, Google Gemini水印去除, AI图片去水印, 免费去水印工具, Gemini Watermark Remover">
+    <title>AI Tian Gemini 图片水印去除工具 - 自动识别与手动框选</title>
+    <meta name="description" content="AI Tian 提供免费的 Gemini 图片水印去除工具，支持自动识别和手动框选 2 种模式。图片仅在浏览器本地处理，不上传服务器，适合快速清理 AI 生成图片。">
+    <meta name="keywords" content="Gemini水印去除, AI图片去水印, Gemini图片工具, 手动框选去水印, AI Tian">
+    <link rel="canonical" href="https://aitian.site/">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="AI Tian">
+    <meta property="og:title" content="AI Tian Gemini 图片水印去除工具">
+    <meta property="og:description" content="自动识别或手动框选 Gemini 图片水印，在浏览器本地完成处理。">
+    <meta property="og:url" content="https://aitian.site/">
+    <meta property="og:image" content="https://aitian.site/assets/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="AI Tian Gemini 图片水印去除工具">
+    <meta name="twitter:description" content="支持自动识别和手动框选，图片仅在本地浏览器处理。">
+    <meta name="twitter:image" content="https://aitian.site/assets/og-image.png">
+    <link rel="icon" href="assets/logo.png">
     <link rel="stylesheet" href="styles.css">
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-K51XK8QXMV"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-K51XK8QXMV');
-</script>
-</head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K51XK8QXMV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-K51XK8QXMV");
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "AI Tian Gemini 图片水印去除工具",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Web",
+        "url": "https://aitian.site/",
+        "description": "一款在浏览器本地处理图片的 Gemini 图片水印去除工具，支持自动识别和手动框选。",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "AI Tian 会上传我的图片吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "不会。当前工具使用浏览器 Canvas 在本地处理图片，图片文件不会上传到 AI Tian 服务器。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "自动模式和手动框选有什么区别？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "自动模式适合常见的右下角 Gemini 水印；如果水印位置变化，可以切换手动框选模式，在原图上拖动选择水印区域后再处理。"
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
   <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="AI Tian 首页">
+        <img src="assets/logo.png" alt="AI Tian logo">
+        <span>AI Tian</span>
+      </a>
+      <nav class="top-nav" aria-label="主导航">
+        <a href="#tool">工具</a>
+        <a href="#guide">教程</a>
+        <a href="#faq">FAQ</a>
+        <a href="privacy.html">隐私</a>
+        <a href="contact.html">联系</a>
+      </nav>
+    </header>
+
     <main>
-      <header class="header"><div style="font-size:1.3rem;font-weight:700;color:#333;padding:12px 20px;">Gemini 去水印工具</div></header>
-
-      <article class="post-content">
-        <h1>Gemini 去水印工具</h1>
-        <div class="post-text">
-          <div class="post-ads" aria-label="advertisement"></div>
-
-          <section class="gemini-watermark-remover" aria-label="Gemini 去水印工具">
-            <div id="drop-area">
-              <form class="my-form">
-                <p>拖放图片到这里，或点击选择</p>
-                <input type="file" id="fileElem" accept="image/*">
-                <label for="fileElem" class="btn btn-primary upload-label">上传图片</label>
-              </form>
-            </div>
-
-            <div class="mode-panel hidden" id="modePanel">
-              <div class="mode-tabs" role="tablist" aria-label="处理模式">
-                <button type="button" id="autoModeBtn" class="mode-tab active">自动检测消除</button>
-                <button type="button" id="manualModeBtn" class="mode-tab">手动框选消除</button>
-              </div>
-              <p id="manualHint" class="manual-hint hidden">在原始图片上按住并拖动，框选需要去除水印的区域。</p>
-            </div>
-
-            <div class="images-container" aria-live="polite">
-              <div class="image-wrapper hidden" id="originalWrap">
-                <h3>原始图片</h3>
-                <div class="selection-stage" id="selectionStage">
-                  <img id="originalImage" alt="Original">
-                  <div class="selection-box hidden" id="selectionBox"></div>
-                </div>
-              </div>
-              <div class="image-wrapper hidden" id="processedWrap">
-                <h3>处理后图片</h3>
-                <img id="processedImage" alt="Processed">
-              </div>
-            </div>
-
-            <div class="actions">
-              <button type="button" id="processBtn" class="btn btn-success hidden">去除水印</button>
-              <button type="button" id="downloadBtn" class="btn btn-primary hidden">下载图片</button>
-            </div>
-          </section>
-
-          <div class="post-ads" aria-label="advertisement"></div>
-
-          <h2>如何使用 Gemini 去水印工具？</h2>
-          <ol>
-            <li>点击“上传图片”按钮，选择您想要处理的 Gemini 生成图片。</li>
-            <li>默认使用“自动检测消除”，会按 Gemini 常见右下角水印位置处理。</li>
-            <li>如果水印位置不固定，切换到“手动框选消除”，在原图上拖出一个框后再处理。</li>
-            <li>处理完成后预览结果，点击“下载图片”保存处理后的图片。</li>
-          </ol>
-
-          <h2>什么是 Gemini 去水印工具？</h2>
-          <p>Gemini 去水印工具是一个专门针对 Google Gemini (原 Bard) 生成的图片进行水印去除的在线工具。Gemini 生成的图片通常会包含一个半透明的水印，本工具利用反向 Alpha 混合算法，可以近乎完美地还原水印下的原始像素。</p>
-
-          <h2>为什么要使用本工具？</h2>
-          <ul>
-            <li><strong>精准去除</strong>：针对 Gemini 水印特性定制算法，效果优于通用去水印工具。</li>
-            <li><strong>支持框选</strong>：水印位置变化时，可以手动框选任意区域进行处理。</li>
-            <li><strong>保护隐私</strong>：所有处理均在浏览器本地完成，图片不会上传到服务器。</li>
-            <li><strong>免费使用</strong>：完全免费，无限制。</li>
-          </ul>
-
-
-        </div>
-      </article>
-
-      <footer class="footer">
-        <div class="footer-content">
-          <nav class="navigation" aria-label="Footer navigation">
-            <ul>
-              <li><a href="#">Home</a></li>
-              <li><a href="#">Tools</a></li>
-              <li><a href="#">Articles</a></li>
-              <li><a href="#">Resources</a></li>
-              <li><a href="#">About</a></li>
-              <li><a href="#">Support</a></li>
-            </ul>
-          </nav>
-          <div class="footer-beian">
-            openHacking - 2021
-            <img src="assets/beian.png" alt="beian">
-            <a href="#">苏公网安备32038102020082</a>
-            <a href="#">苏ICP备19066666号-1</a>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">浏览器本地处理 · 自动识别 · 手动框选</p>
+          <h1>AI Tian Gemini 图片水印去除工具</h1>
+          <p class="hero-subtitle">上传 Gemini 生成图片后，可以一键自动清理常见水印；如果水印位置变化，也可以直接在原图上拖出选区进行处理。</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#tool">开始处理图片</a>
+            <a class="btn btn-plain" href="#privacy-note">查看隐私说明</a>
           </div>
         </div>
-      </footer>
+        <div class="hero-panel" aria-label="功能概览">
+          <div class="mini-toolbar">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="demo-image">
+            <div class="demo-watermark">Gemini</div>
+            <div class="demo-selection"></div>
+          </div>
+          <div class="demo-steps">
+            <span>上传</span>
+            <span>选择模式</span>
+            <span>下载结果</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="ad-slot ad-top" aria-label="广告位" hidden>
+        <span>AdSense responsive display ad slot</span>
+      </section>
+
+      <section id="tool" class="tool-shell" aria-label="AI Tian 去水印工具">
+        <div class="tool-heading">
+          <h2>选择图片并处理水印</h2>
+          <p>建议优先使用自动模式。如果水印不在常规位置，切换到手动框选模式。</p>
+        </div>
+
+        <div id="drop-area">
+          <form class="my-form">
+            <p>拖放图片到这里，或点击选择</p>
+            <input type="file" id="fileElem" accept="image/*">
+            <label for="fileElem" class="btn btn-primary upload-label">上传图片</label>
+          </form>
+        </div>
+
+        <div class="mode-panel hidden" id="modePanel">
+          <div class="mode-tabs" role="tablist" aria-label="处理模式">
+            <button type="button" id="autoModeBtn" class="mode-tab active">自动检测消除</button>
+            <button type="button" id="manualModeBtn" class="mode-tab">手动框选消除</button>
+          </div>
+          <p id="manualHint" class="manual-hint hidden">在原始图片上按住并拖动，框选需要去除水印的区域。</p>
+        </div>
+
+        <div class="images-container" aria-live="polite">
+          <div class="image-wrapper hidden" id="originalWrap">
+            <h3>原始图片</h3>
+            <div class="selection-stage" id="selectionStage">
+              <img id="originalImage" alt="待处理的原始图片">
+              <div class="selection-box hidden" id="selectionBox"></div>
+            </div>
+          </div>
+          <div class="image-wrapper hidden" id="processedWrap">
+            <h3>处理后图片</h3>
+            <img id="processedImage" alt="去除水印后的图片预览">
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="processBtn" class="btn btn-success hidden">去除水印</button>
+          <button type="button" id="downloadBtn" class="btn btn-primary hidden">下载图片</button>
+        </div>
+      </section>
+
+      <section class="feature-grid" aria-label="工具特点">
+        <article>
+          <h2>为什么做成两种模式？</h2>
+          <p>Gemini 图片水印有时出现在常见位置，有时又会因为图片尺寸、裁剪或二次编辑而偏移。AI Tian 保留自动处理效率，同时加入手动框选来覆盖更多真实场景。</p>
+        </article>
+        <article id="privacy-note">
+          <h2>图片只在本地处理</h2>
+          <p>工具读取图片后使用浏览器 Canvas 进行像素处理。AI Tian 不接收、不保存你的原图和结果图，因此更适合处理私密草图、提案图或临时素材。</p>
+        </article>
+        <article>
+          <h2>适合什么图片？</h2>
+          <p>它更适合 Gemini 生成图中半透明标识类水印。对于复杂遮挡、彩色大面积水印或已经严重压缩的图片，建议配合手动框选并尝试更精准的选区。</p>
+        </article>
+      </section>
+
+      <section id="guide" class="content-band">
+        <div>
+          <h2>如何使用 AI Tian 去除 Gemini 水印？</h2>
+          <ol>
+            <li>上传一张需要处理的 Gemini 生成图片。</li>
+            <li>先使用“自动检测消除”，快速处理常见右下角水印。</li>
+            <li>如果水印位置不同，切换“手动框选消除”，在原图上拖动选择水印区域。</li>
+            <li>预览处理后图片，确认无误后下载 PNG 文件。</li>
+          </ol>
+        </div>
+        <div class="ad-slot" aria-label="广告位" hidden>
+          <span>AdSense in-content ad slot</span>
+        </div>
+      </section>
+
+      <section id="faq" class="faq-section">
+        <h2>常见问题</h2>
+        <details>
+          <summary>AI Tian 去水印工具是免费的吗？</summary>
+          <p>是的，当前网页工具免费使用。后续如果增加批量处理或更高级的图片修复能力，可能会单独说明。</p>
+        </details>
+        <details>
+          <summary>为什么要提供手动框选？</summary>
+          <p>自动模式依赖常见水印位置。真实图片可能经过裁剪、缩放或二次编辑，手动框选可以让处理范围更准确。</p>
+        </details>
+        <details>
+          <summary>它能去除所有水印吗？</summary>
+          <p>不能保证。这个工具针对 Gemini 透明水印做了优化，不建议用于侵犯他人版权或移除权利声明。</p>
+        </details>
+        <details>
+          <summary>网站靠什么维护？</summary>
+          <p>AI Tian 计划通过广告展示和后续工具扩展维持服务。广告不会改变本地处理图片的方式。</p>
+        </details>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>AI Tian</strong>
+        <p>面向创作者的轻量 AI 图片工具。</p>
+      </div>
+      <nav aria-label="页脚导航">
+        <a href="about.html">关于</a>
+        <a href="privacy.html">隐私政策</a>
+        <a href="terms.html">使用条款</a>
+        <a href="contact.html">联系</a>
+      </nav>
+    </footer>
+
     <script src="script.js"></script>
   </body>
 </html>
-
-
