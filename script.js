@@ -1,7 +1,7 @@
 const text = {
   processing: "处理中...",
   processAuto: "去除水印",
-  processManual: "去除框选区域水印",
+  processManual: "去除定位水印",
   download: "下载图片",
   error: "发生错误，请重试。",
   selectArea: "请先在图片上拖动框选水印区域。"
@@ -83,7 +83,6 @@ function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = 
   const targetArea = clampArea(area, imageData);
   const alphaThreshold = options.alphaThreshold ?? 0.002;
   const strength = options.strength ?? 1;
-  const protectDarkPixels = options.protectDarkPixels ?? false;
 
   for (let row = 0; row < targetArea.height; row += 1) {
     for (let col = 0; col < targetArea.width; col += 1) {
@@ -94,11 +93,6 @@ function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = 
 
       const target = 4 * ((targetArea.y + row) * imageData.width + (targetArea.x + col));
       alpha = Math.min(alpha * strength, 0.99);
-      if (protectDarkPixels) {
-        const maxSafeAlpha = Math.min(data[target], data[target + 1], data[target + 2]) / 255 * 0.88;
-        alpha = Math.min(alpha, maxSafeAlpha);
-        if (alpha < alphaThreshold) continue;
-      }
       const remaining = 1 - alpha;
       for (let channel = 0; channel < 3; channel += 1) {
         const restored = (data[target + channel] - 255 * alpha) / remaining;
@@ -210,12 +204,21 @@ function drawSelection() {
   selectionBox.classList.remove("hidden");
 }
 
-function updateSelection(start, end) {
-  const x = Math.min(start.x, end.x);
-  const y = Math.min(start.y, end.y);
-  const width = Math.abs(end.x - start.x);
-  const height = Math.abs(end.y - start.y);
-  selection = { x, y, width, height };
+function getDisplayedWatermarkSize() {
+  if (!originalImage.naturalWidth || !originalImage.naturalHeight) return 48;
+
+  const rect = originalImage.getBoundingClientRect();
+  const config = getWatermarkConfig(originalImage.naturalWidth, originalImage.naturalHeight);
+  const scale = Math.min(rect.width / originalImage.naturalWidth, rect.height / originalImage.naturalHeight);
+  return Math.max(12, config.logoSize * scale);
+}
+
+function updateFixedSelection(centerPoint) {
+  const size = getDisplayedWatermarkSize();
+  const rect = selectionStage.getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width - size, centerPoint.x - size / 2));
+  const y = Math.max(0, Math.min(rect.height - size, centerPoint.y - size / 2));
+  selection = { x, y, width: size, height: size };
   drawSelection();
 }
 
@@ -231,88 +234,6 @@ function getSelectionInImagePixels(image) {
     width: selection.width * scaleX,
     height: selection.height * scaleY
   };
-}
-
-function getLuma(data, offset) {
-  return (0.2126 * data[offset] + 0.7152 * data[offset + 1] + 0.0722 * data[offset + 2]) / 255;
-}
-
-function scoreWatermarkCandidate(imageData, alphaMap, sourceSize, area) {
-  const data = imageData.data;
-  const step = sourceSize >= 96 ? 3 : 2;
-  let count = 0;
-  let sumAlpha = 0;
-  let sumLuma = 0;
-  let sumAlphaSq = 0;
-  let sumLumaSq = 0;
-  let sumAlphaLuma = 0;
-  let brightWeight = 0;
-  let alphaWeight = 0;
-
-  for (let row = 0; row < sourceSize; row += step) {
-    for (let col = 0; col < sourceSize; col += step) {
-      const alpha = alphaMap[row * sourceSize + col];
-      if (alpha < 0.04) continue;
-
-      const target = 4 * ((area.y + row) * imageData.width + (area.x + col));
-      const luma = getLuma(data, target);
-      count += 1;
-      sumAlpha += alpha;
-      sumLuma += luma;
-      sumAlphaSq += alpha * alpha;
-      sumLumaSq += luma * luma;
-      sumAlphaLuma += alpha * luma;
-
-      if (alpha > 0.16) {
-        brightWeight += luma * alpha;
-        alphaWeight += alpha;
-      }
-    }
-  }
-
-  if (count < 12 || !alphaWeight) return -Infinity;
-
-  const covariance = sumAlphaLuma - (sumAlpha * sumLuma) / count;
-  const alphaVariance = sumAlphaSq - (sumAlpha * sumAlpha) / count;
-  const lumaVariance = sumLumaSq - (sumLuma * sumLuma) / count;
-  const correlation = covariance / Math.sqrt(Math.max(alphaVariance * lumaVariance, 0.000001));
-  const weightedBrightness = brightWeight / alphaWeight;
-
-  return correlation * 0.8 + weightedBrightness * 0.2;
-}
-
-function findWatermarkAreaInSelection(imageData, alphaMap, sourceSize, selectedArea) {
-  const searchArea = clampArea(selectedArea, imageData);
-  if (searchArea.width < sourceSize || searchArea.height < sourceSize) {
-    const centerX = searchArea.x + searchArea.width / 2;
-    const centerY = searchArea.y + searchArea.height / 2;
-    return {
-      area: {
-        x: Math.max(0, Math.min(imageData.width - sourceSize, Math.round(centerX - sourceSize / 2))),
-        y: Math.max(0, Math.min(imageData.height - sourceSize, Math.round(centerY - sourceSize / 2))),
-        width: sourceSize,
-        height: sourceSize
-      },
-      score: 1
-    };
-  }
-
-  const stride = sourceSize >= 96 ? 4 : 3;
-  const maxX = searchArea.x + searchArea.width - sourceSize;
-  const maxY = searchArea.y + searchArea.height - sourceSize;
-  let best = { area: null, score: -Infinity };
-
-  for (let y = searchArea.y; y <= maxY; y += stride) {
-    for (let x = searchArea.x; x <= maxX; x += stride) {
-      const area = { x, y, width: sourceSize, height: sourceSize };
-      const score = scoreWatermarkCandidate(imageData, alphaMap, sourceSize, area);
-      if (score > best.score) {
-        best = { area, score };
-      }
-    }
-  }
-
-  return best;
 }
 
 function forceFixedWatermarkArea(imageData, area, sourceSize) {
@@ -353,13 +274,7 @@ async function processImage() {
       }
       const expectedSize = getWatermarkConfig(image.width, image.height).logoSize;
       config = { logoSize: expectedSize };
-      const manualAlphaMap = watermarkRemover.getAlphaMap(config.logoSize);
-      const match = findWatermarkAreaInSelection(imageData, manualAlphaMap, config.logoSize, area);
-      if (!match.area || match.score < 0.18) {
-        alert("没有在框选区域里找到明显的 Gemini 水印，请把选区缩小到水印附近再试。");
-        return;
-      }
-      area = forceFixedWatermarkArea(imageData, match.area, config.logoSize);
+      area = forceFixedWatermarkArea(imageData, area, config.logoSize);
     } else {
       config = getWatermarkConfig(image.width, image.height);
       area = getWatermarkArea(image.width, image.height, config);
@@ -367,9 +282,8 @@ async function processImage() {
 
     const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
     removeWatermarkPixels(imageData, alphaMap, config.logoSize, area, {
-      alphaThreshold: currentMode === "manual" ? 0.06 : 0.002,
-      strength: currentMode === "manual" ? 0.82 : 1,
-      protectDarkPixels: currentMode === "manual"
+      alphaThreshold: 0.002,
+      strength: 1
     });
     context.putImageData(imageData, 0, 0);
 
@@ -430,21 +344,21 @@ selectionStage.addEventListener("pointerdown", (event) => {
   if (currentMode !== "manual" || !originalDataUrl) return;
   event.preventDefault();
   resetResult();
-  dragStart = getStagePoint(event);
+  dragStart = true;
   selectionStage.setPointerCapture(event.pointerId);
-  updateSelection(dragStart, dragStart);
+  updateFixedSelection(getStagePoint(event));
 });
 
 selectionStage.addEventListener("pointermove", (event) => {
   if (!dragStart || currentMode !== "manual") return;
   event.preventDefault();
-  updateSelection(dragStart, getStagePoint(event));
+  updateFixedSelection(getStagePoint(event));
 });
 
 selectionStage.addEventListener("pointerup", (event) => {
   if (!dragStart || currentMode !== "manual") return;
   event.preventDefault();
-  updateSelection(dragStart, getStagePoint(event));
+  updateFixedSelection(getStagePoint(event));
   dragStart = null;
 });
 
