@@ -102,132 +102,6 @@ function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = 
   }
 }
 
-function buildWatermarkMask(alphaMap, sourceSize, area, threshold) {
-  const width = Math.round(area.width);
-  const height = Math.round(area.height);
-  const mask = new Uint8Array(width * height);
-
-  for (let row = 0; row < height; row += 1) {
-    for (let col = 0; col < width; col += 1) {
-      const sourceX = Math.min(sourceSize - 1, Math.floor((col / width) * sourceSize));
-      const sourceY = Math.min(sourceSize - 1, Math.floor((row / height) * sourceSize));
-      const alpha = alphaMap[sourceY * sourceSize + sourceX];
-      if (alpha >= threshold) {
-        mask[row * width + col] = 1;
-      }
-    }
-  }
-
-  return { mask, width, height };
-}
-
-function expandMask(maskInfo, passes = 1) {
-  const { mask, width, height } = maskInfo;
-  let current = mask;
-
-  for (let pass = 0; pass < passes; pass += 1) {
-    const next = new Uint8Array(current);
-    for (let y = 1; y < height - 1; y += 1) {
-      for (let x = 1; x < width - 1; x += 1) {
-        const index = y * width + x;
-        if (current[index]) continue;
-        if (
-          current[index - 1] ||
-          current[index + 1] ||
-          current[index - width] ||
-          current[index + width]
-        ) {
-          next[index] = 1;
-        }
-      }
-    }
-    current = next;
-  }
-
-  return { mask: current, width, height };
-}
-
-function sampleRepairColor(sourceData, imageWidth, imageHeight, area, maskInfo, localX, localY) {
-  const { mask, width, height } = maskInfo;
-  const radiusSteps = [3, 6, 10, 15, 22];
-
-  for (const radius of radiusSteps) {
-    let red = 0;
-    let green = 0;
-    let blue = 0;
-    let alpha = 0;
-    let weightSum = 0;
-
-    for (let dy = -radius; dy <= radius; dy += 1) {
-      for (let dx = -radius; dx <= radius; dx += 1) {
-        const nx = localX + dx;
-        const ny = localY + dy;
-        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-        if (mask[ny * width + nx]) continue;
-
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < 1 || distance > radius) continue;
-
-        const imageX = Math.round(area.x + nx);
-        const imageY = Math.round(area.y + ny);
-        if (imageX < 0 || imageY < 0 || imageX >= imageWidth || imageY >= imageHeight) continue;
-
-        const offset = 4 * (imageY * imageWidth + imageX);
-        const weight = 1 / (1 + distance);
-        red += sourceData[offset] * weight;
-        green += sourceData[offset + 1] * weight;
-        blue += sourceData[offset + 2] * weight;
-        alpha += sourceData[offset + 3] * weight;
-        weightSum += weight;
-      }
-    }
-
-    if (weightSum > 0) {
-      return [
-        red / weightSum,
-        green / weightSum,
-        blue / weightSum,
-        alpha / weightSum
-      ];
-    }
-  }
-
-  return null;
-}
-
-function repairWatermarkPixels(imageData, alphaMap, sourceSize, area) {
-  const targetArea = clampArea(area, imageData);
-  const maskInfo = expandMask(buildWatermarkMask(alphaMap, sourceSize, targetArea, 0.1), 1);
-  const sourceData = new Uint8ClampedArray(imageData.data);
-  const data = imageData.data;
-
-  for (let y = 0; y < maskInfo.height; y += 1) {
-    for (let x = 0; x < maskInfo.width; x += 1) {
-      if (!maskInfo.mask[y * maskInfo.width + x]) continue;
-
-      const imageX = Math.round(targetArea.x + x);
-      const imageY = Math.round(targetArea.y + y);
-      const color = sampleRepairColor(
-        sourceData,
-        imageData.width,
-        imageData.height,
-        targetArea,
-        maskInfo,
-        x,
-        y
-      );
-
-      if (!color) continue;
-
-      const offset = 4 * (imageY * imageData.width + imageX);
-      data[offset] = Math.round(color[0]);
-      data[offset + 1] = Math.round(color[1]);
-      data[offset + 2] = Math.round(color[2]);
-      data[offset + 3] = Math.round(color[3]);
-    }
-  }
-}
-
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -473,11 +347,10 @@ async function processImage() {
     }
 
     const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
-    if (currentMode === "manual") {
-      repairWatermarkPixels(imageData, alphaMap, config.logoSize, area);
-    } else {
-      removeWatermarkPixels(imageData, alphaMap, config.logoSize, area);
-    }
+    removeWatermarkPixels(imageData, alphaMap, config.logoSize, area, {
+      alphaThreshold: currentMode === "manual" ? 0.06 : 0.002,
+      strength: 1
+    });
     context.putImageData(imageData, 0, 0);
 
     processedDataUrl = canvas.toDataURL("image/png");
