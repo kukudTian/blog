@@ -78,19 +78,21 @@ function clampArea(area, imageData) {
   return { x, y, width, height };
 }
 
-function removeWatermarkPixels(imageData, alphaMap, sourceSize, area) {
+function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = {}) {
   const data = imageData.data;
   const targetArea = clampArea(area, imageData);
+  const alphaThreshold = options.alphaThreshold ?? 0.002;
+  const strength = options.strength ?? 1;
 
   for (let row = 0; row < targetArea.height; row += 1) {
     for (let col = 0; col < targetArea.width; col += 1) {
       const sourceX = Math.min(sourceSize - 1, Math.floor((col / targetArea.width) * sourceSize));
       const sourceY = Math.min(sourceSize - 1, Math.floor((row / targetArea.height) * sourceSize));
       let alpha = alphaMap[sourceY * sourceSize + sourceX];
-      if (alpha < 0.002) continue;
+      if (alpha < alphaThreshold) continue;
 
       const target = 4 * ((targetArea.y + row) * imageData.width + (targetArea.x + col));
-      alpha = Math.min(alpha, 0.99);
+      alpha = Math.min(alpha * strength, 0.99);
       const remaining = 1 - alpha;
       for (let channel = 0; channel < 3; channel += 1) {
         const restored = (data[target + channel] - 255 * alpha) / remaining;
@@ -225,6 +227,18 @@ function getSelectionInImagePixels(image) {
   };
 }
 
+function getManualWatermarkArea(image, selectedArea) {
+  const expectedSize = getWatermarkConfig(image.width, image.height).logoSize;
+  const size = Math.max(8, Math.min(expectedSize, selectedArea.width, selectedArea.height));
+
+  return {
+    x: selectedArea.x + (selectedArea.width - size) / 2,
+    y: selectedArea.y + (selectedArea.height - size) / 2,
+    width: size,
+    height: size
+  };
+}
+
 async function processImage() {
   if (!originalDataUrl || !watermarkRemover) return;
 
@@ -250,15 +264,18 @@ async function processImage() {
         alert(text.selectArea);
         return;
       }
-      const longestSide = Math.max(area.width, area.height);
-      config = { logoSize: longestSide > 72 ? 96 : 48 };
+      area = getManualWatermarkArea(image, area);
+      config = { logoSize: area.width > 72 ? 96 : 48 };
     } else {
       config = getWatermarkConfig(image.width, image.height);
       area = getWatermarkArea(image.width, image.height, config);
     }
 
     const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
-    removeWatermarkPixels(imageData, alphaMap, config.logoSize, area);
+    removeWatermarkPixels(imageData, alphaMap, config.logoSize, area, {
+      alphaThreshold: currentMode === "manual" ? 0.08 : 0.002,
+      strength: currentMode === "manual" ? 0.92 : 1
+    });
     context.putImageData(imageData, 0, 0);
 
     processedDataUrl = canvas.toDataURL("image/png");
