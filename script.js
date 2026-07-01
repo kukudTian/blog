@@ -102,6 +102,170 @@ function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = 
   }
 }
 
+function scoreWatermarkCandidate(imageData, alphaMap, sourceSize, x, y) {
+  const data = imageData.data;
+  let weightedBrightness = 0;
+  let weightedSaturation = 0;
+  let weight = 0;
+  let outsideBrightness = 0;
+  let outsideCount = 0;
+
+  for (let row = 0; row < sourceSize; row += 1) {
+    for (let col = 0; col < sourceSize; col += 1) {
+      const alpha = alphaMap[row * sourceSize + col];
+      const target = 4 * ((y + row) * imageData.width + (x + col));
+      const red = data[target];
+      const green = data[target + 1];
+      const blue = data[target + 2];
+      const maxChannel = Math.max(red, green, blue);
+      const minChannel = Math.min(red, green, blue);
+
+      if (alpha > 0.06) {
+        weightedBrightness += maxChannel * alpha;
+        weightedSaturation += (maxChannel - minChannel) * alpha;
+        weight += alpha;
+      } else {
+        outsideBrightness += maxChannel;
+        outsideCount += 1;
+      }
+    }
+  }
+
+  if (!weight || !outsideCount) return -Infinity;
+
+  const coreBrightness = weightedBrightness / weight;
+  const coreSaturation = weightedSaturation / weight;
+  const surroundingBrightness = outsideBrightness / outsideCount;
+  return (coreBrightness - surroundingBrightness) * 1.8 + coreBrightness * 0.2 - coreSaturation * 0.25;
+}
+
+function findManualWatermarkArea(imageData, alphaMap, sourceSize, selectedArea) {
+  const area = clampArea(selectedArea, imageData);
+  const centerX = area.x + area.width / 2;
+  const centerY = area.y + area.height / 2;
+
+  if (area.width < sourceSize * 1.6 && area.height < sourceSize * 1.6) {
+    return forceFixedWatermarkArea(imageData, area, sourceSize);
+  }
+
+  const minX = Math.max(0, Math.round(area.x));
+  const minY = Math.max(0, Math.round(area.y));
+  const maxX = Math.min(imageData.width - sourceSize, Math.round(area.x + area.width - sourceSize));
+  const maxY = Math.min(imageData.height - sourceSize, Math.round(area.y + area.height - sourceSize));
+
+  if (maxX < minX || maxY < minY) {
+    return forceFixedWatermarkArea(imageData, area, sourceSize);
+  }
+
+  let bestArea = {
+    x: Math.max(0, Math.min(imageData.width - sourceSize, Math.round(centerX - sourceSize / 2))),
+    y: Math.max(0, Math.min(imageData.height - sourceSize, Math.round(centerY - sourceSize / 2))),
+    width: sourceSize,
+    height: sourceSize
+  };
+  let bestScore = scoreWatermarkCandidate(imageData, alphaMap, sourceSize, bestArea.x, bestArea.y);
+  const step = sourceSize >= 96 ? 4 : 2;
+
+  for (let y = minY; y <= maxY; y += step) {
+    for (let x = minX; x <= maxX; x += step) {
+      const score = scoreWatermarkCandidate(imageData, alphaMap, sourceSize, x, y);
+      if (score > bestScore) {
+        bestScore = score;
+        bestArea = { x, y, width: sourceSize, height: sourceSize };
+      }
+    }
+  }
+
+  return bestArea;
+}
+
+function repairWatermarkShapePixels(imageData, alphaMap, sourceSize, area, options = {}) {
+  const data = imageData.data;
+  const targetArea = clampArea(area, imageData);
+  const threshold = options.alphaThreshold ?? 0.04;
+  const mask = new Set();
+  let remaining = 0;
+
+  for (let row = 0; row < targetArea.height; row += 1) {
+    for (let col = 0; col < targetArea.width; col += 1) {
+      const sourceX = Math.min(sourceSize - 1, Math.floor((col / targetArea.width) * sourceSize));
+      const sourceY = Math.min(sourceSize - 1, Math.floor((row / targetArea.height) * sourceSize));
+      if (alphaMap[sourceY * sourceSize + sourceX] <= threshold) continue;
+
+      const x = targetArea.x + col;
+      const y = targetArea.y + row;
+      const key = y * imageData.width + x;
+      if (!mask.has(key)) {
+        mask.add(key);
+        remaining += 1;
+      }
+    }
+  }
+
+  if (!remaining) return;
+
+  const working = new Uint8ClampedArray(data);
+  const filled = new Set();
+  const maxIterations = sourceSize + 12;
+  const neighbors = [
+    [-1, -1], [0, -1], [1, -1],
+    [-1, 0], [1, 0],
+    [-1, 1], [0, 1], [1, 1]
+  ];
+
+  for (let iteration = 0; iteration < maxIterations && remaining > 0; iteration += 1) {
+    const updates = [];
+
+    mask.forEach((key) => {
+      if (filled.has(key)) return;
+
+      const x = key % imageData.width;
+      const y = Math.floor(key / imageData.width);
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let count = 0;
+
+      neighbors.forEach(([dx, dy]) => {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= imageData.width || ny >= imageData.height) return;
+
+        const neighborKey = ny * imageData.width + nx;
+        if (mask.has(neighborKey) && !filled.has(neighborKey)) return;
+
+        const offset = neighborKey * 4;
+        red += working[offset];
+        green += working[offset + 1];
+        blue += working[offset + 2];
+        count += 1;
+      });
+
+      if (count >= 2) {
+        updates.push({ key, red: red / count, green: green / count, blue: blue / count });
+      }
+    });
+
+    if (!updates.length) break;
+
+    updates.forEach(({ key, red, green, blue }) => {
+      const offset = key * 4;
+      working[offset] = Math.round(red);
+      working[offset + 1] = Math.round(green);
+      working[offset + 2] = Math.round(blue);
+      filled.add(key);
+      remaining -= 1;
+    });
+  }
+
+  mask.forEach((key) => {
+    const offset = key * 4;
+    data[offset] = working[offset];
+    data[offset + 1] = working[offset + 1];
+    data[offset + 2] = working[offset + 2];
+  });
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -204,21 +368,13 @@ function drawSelection() {
   selectionBox.classList.remove("hidden");
 }
 
-function getDisplayedWatermarkSize() {
-  if (!originalImage.naturalWidth || !originalImage.naturalHeight) return 48;
-
-  const rect = originalImage.getBoundingClientRect();
-  const config = getWatermarkConfig(originalImage.naturalWidth, originalImage.naturalHeight);
-  const scale = Math.min(rect.width / originalImage.naturalWidth, rect.height / originalImage.naturalHeight);
-  return Math.max(12, config.logoSize * scale);
-}
-
-function updateFixedSelection(centerPoint) {
-  const size = getDisplayedWatermarkSize();
+function updateManualSelection(currentPoint) {
   const rect = selectionStage.getBoundingClientRect();
-  const x = Math.max(0, Math.min(rect.width - size, centerPoint.x - size / 2));
-  const y = Math.max(0, Math.min(rect.height - size, centerPoint.y - size / 2));
-  selection = { x, y, width: size, height: size };
+  const x = Math.max(0, Math.min(dragStart.x, currentPoint.x));
+  const y = Math.max(0, Math.min(dragStart.y, currentPoint.y));
+  const right = Math.min(rect.width, Math.max(dragStart.x, currentPoint.x));
+  const bottom = Math.min(rect.height, Math.max(dragStart.y, currentPoint.y));
+  selection = { x, y, width: right - x, height: bottom - y };
   drawSelection();
 }
 
@@ -274,17 +430,20 @@ async function processImage() {
       }
       const expectedSize = getWatermarkConfig(image.width, image.height).logoSize;
       config = { logoSize: expectedSize };
-      area = forceFixedWatermarkArea(imageData, area, config.logoSize);
+      const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
+      area = findManualWatermarkArea(imageData, alphaMap, config.logoSize, area);
+      repairWatermarkShapePixels(imageData, alphaMap, config.logoSize, area, {
+        alphaThreshold: 0.04
+      });
     } else {
       config = getWatermarkConfig(image.width, image.height);
       area = getWatermarkArea(image.width, image.height, config);
+      const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
+      removeWatermarkPixels(imageData, alphaMap, config.logoSize, area, {
+        alphaThreshold: 0.002,
+        strength: 1
+      });
     }
-
-    const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
-    removeWatermarkPixels(imageData, alphaMap, config.logoSize, area, {
-      alphaThreshold: 0.002,
-      strength: 1
-    });
     context.putImageData(imageData, 0, 0);
 
     processedDataUrl = canvas.toDataURL("image/png");
@@ -344,21 +503,22 @@ selectionStage.addEventListener("pointerdown", (event) => {
   if (currentMode !== "manual" || !originalDataUrl) return;
   event.preventDefault();
   resetResult();
-  dragStart = true;
+  dragStart = getStagePoint(event);
+  selection = { x: dragStart.x, y: dragStart.y, width: 0, height: 0 };
   selectionStage.setPointerCapture(event.pointerId);
-  updateFixedSelection(getStagePoint(event));
+  drawSelection();
 });
 
 selectionStage.addEventListener("pointermove", (event) => {
   if (!dragStart || currentMode !== "manual") return;
   event.preventDefault();
-  updateFixedSelection(getStagePoint(event));
+  updateManualSelection(getStagePoint(event));
 });
 
 selectionStage.addEventListener("pointerup", (event) => {
   if (!dragStart || currentMode !== "manual") return;
   event.preventDefault();
-  updateFixedSelection(getStagePoint(event));
+  updateManualSelection(getStagePoint(event));
   dragStart = null;
 });
 
