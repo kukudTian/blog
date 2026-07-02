@@ -1,6 +1,7 @@
 const text = {
   processing: "处理中...",
   processAuto: "去除水印",
+  processAutoModern: "去除新水印",
   processManual: "去除定位水印",
   download: "下载图片",
   error: "发生错误，请重试。",
@@ -11,6 +12,7 @@ const dropArea = document.getElementById("drop-area");
 const fileInput = document.getElementById("fileElem");
 const modePanel = document.getElementById("modePanel");
 const autoModeBtn = document.getElementById("autoModeBtn");
+const autoModernModeBtn = document.getElementById("autoModernModeBtn");
 const manualModeBtn = document.getElementById("manualModeBtn");
 const manualHint = document.getElementById("manualHint");
 const originalWrap = document.getElementById("originalWrap");
@@ -56,6 +58,19 @@ function getWatermarkArea(width, height, config) {
     y: height - config.marginBottom - size,
     width: size,
     height: size
+  };
+}
+
+function getModernWatermarkArea(width, height, logoSize) {
+  const referenceWidth = 1792;
+  const referenceHeight = 2400;
+  const referenceX = 1416;
+  const referenceY = 2110;
+  return {
+    x: Math.round((width * referenceX) / referenceWidth),
+    y: Math.round((height * referenceY) / referenceHeight),
+    width: logoSize,
+    height: logoSize
   };
 }
 
@@ -183,6 +198,7 @@ function repairWatermarkShapePixels(imageData, alphaMap, sourceSize, area, optio
   const data = imageData.data;
   const targetArea = clampArea(area, imageData);
   const threshold = options.alphaThreshold ?? 0.04;
+  const expand = options.expand ?? 0;
   const mask = new Set();
   let remaining = 0;
 
@@ -192,12 +208,18 @@ function repairWatermarkShapePixels(imageData, alphaMap, sourceSize, area, optio
       const sourceY = Math.min(sourceSize - 1, Math.floor((row / targetArea.height) * sourceSize));
       if (alphaMap[sourceY * sourceSize + sourceX] <= threshold) continue;
 
-      const x = targetArea.x + col;
-      const y = targetArea.y + row;
-      const key = y * imageData.width + x;
-      if (!mask.has(key)) {
-        mask.add(key);
-        remaining += 1;
+      for (let dy = -expand; dy <= expand; dy += 1) {
+        for (let dx = -expand; dx <= expand; dx += 1) {
+          const x = targetArea.x + col + dx;
+          const y = targetArea.y + row + dy;
+          if (x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) continue;
+
+          const key = y * imageData.width + x;
+          if (!mask.has(key)) {
+            mask.add(key);
+            remaining += 1;
+          }
+        }
       }
     }
   }
@@ -309,12 +331,18 @@ class GeminiWatermarkRemover {
 function setMode(mode) {
   currentMode = mode;
   const isManual = mode === "manual";
+  const isAutoModern = mode === "autoModern";
 
-  autoModeBtn.classList.toggle("active", !isManual);
+  autoModeBtn.classList.toggle("active", mode === "auto");
+  autoModernModeBtn.classList.toggle("active", isAutoModern);
   manualModeBtn.classList.toggle("active", isManual);
   selectionStage.classList.toggle("manual-active", isManual);
   manualHint.classList.toggle("hidden", !isManual);
-  processBtn.textContent = isManual ? text.processManual : text.processAuto;
+  processBtn.textContent = isManual
+    ? text.processManual
+    : isAutoModern
+      ? text.processAutoModern
+      : text.processAuto;
 
   if (!isManual) {
     selectionBox.classList.add("hidden");
@@ -435,6 +463,14 @@ async function processImage() {
       repairWatermarkShapePixels(imageData, alphaMap, config.logoSize, area, {
         alphaThreshold: 0.04
       });
+    } else if (currentMode === "autoModern") {
+      config = getWatermarkConfig(image.width, image.height);
+      area = getModernWatermarkArea(image.width, image.height, config.logoSize);
+      const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
+      repairWatermarkShapePixels(imageData, alphaMap, config.logoSize, area, {
+        alphaThreshold: 0.006,
+        expand: config.logoSize >= 96 ? 2 : 1
+      });
     } else {
       config = getWatermarkConfig(image.width, image.height);
       area = getWatermarkArea(image.width, image.height, config);
@@ -456,7 +492,11 @@ async function processImage() {
     alert(text.error);
   } finally {
     processBtn.disabled = false;
-    processBtn.textContent = currentMode === "manual" ? text.processManual : text.processAuto;
+    processBtn.textContent = currentMode === "manual"
+      ? text.processManual
+      : currentMode === "autoModern"
+        ? text.processAutoModern
+        : text.processAuto;
   }
 }
 
@@ -497,6 +537,7 @@ fileInput.addEventListener("change", (event) => {
 });
 
 autoModeBtn.addEventListener("click", () => setMode("auto"));
+autoModernModeBtn.addEventListener("click", () => setMode("autoModern"));
 manualModeBtn.addEventListener("click", () => setMode("manual"));
 
 selectionStage.addEventListener("pointerdown", (event) => {
