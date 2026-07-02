@@ -130,9 +130,9 @@
 
         <div class="mode-panel hidden" id="modePanel">
           <div class="mode-tabs" role="tablist" aria-label="处理模式">
-            <button type="button" id="autoModeBtn" class="mode-tab active">自动检测消除</button>
-            <button type="button" id="autoModernModeBtn" class="mode-tab">自动消除2</button>
-            <button type="button" id="manualModeBtn" class="mode-tab">手动定位消除</button>
+            <button type="button" id="autoModeBtn" class="mode-tab active" data-mode="auto">自动检测消除</button>
+            <button type="button" id="autoModernModeBtn" class="mode-tab" data-mode="autoModern">自动消除2</button>
+            <button type="button" id="manualModeBtn" class="mode-tab" data-mode="manual">手动定位消除</button>
           </div>
           <p id="manualHint" class="manual-hint hidden">在原图上框出水印附近的大致范围即可，工具会在框内定位 Gemini 菱形水印，只修复水印形状覆盖的区域。</p>
         </div>
@@ -217,6 +217,6 @@
       </nav>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=20260702-auto2"></script>
   </body>
 </html>

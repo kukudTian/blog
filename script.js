@@ -11,6 +11,7 @@ const text = {
 const dropArea = document.getElementById("drop-area");
 const fileInput = document.getElementById("fileElem");
 const modePanel = document.getElementById("modePanel");
+const modeTabs = document.querySelector(".mode-tabs");
 const autoModeBtn = document.getElementById("autoModeBtn");
 const autoModernModeBtn = document.getElementById("autoModernModeBtn");
 const manualModeBtn = document.getElementById("manualModeBtn");
@@ -536,9 +537,11 @@ fileInput.addEventListener("change", (event) => {
   if (file) handleFile(file);
 });
 
-autoModeBtn.addEventListener("click", () => setMode("auto"));
-autoModernModeBtn.addEventListener("click", () => setMode("autoModern"));
-manualModeBtn.addEventListener("click", () => setMode("manual"));
+modeTabs.addEventListener("click", (event) => {
+  const modeButton = event.target.closest("[data-mode]");
+  if (!modeButton) return;
+  setMode(modeButton.dataset.mode);
+});
 
 selectionStage.addEventListener("pointerdown", (event) => {
   if (currentMode !== "manual" || !originalDataUrl) return;
