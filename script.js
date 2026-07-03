@@ -1,36 +1,32 @@
 const text = {
+  loading: "引擎初始化中...",
+  ready: "引擎已就绪，图片会在浏览器本地处理。",
   processing: "处理中...",
-  processAuto: "去除水印",
-  processAutoModern: "去除新水印",
-  processManual: "去除定位水印",
-  download: "下载图片",
-  error: "发生错误，请重试。",
-  selectArea: "请先在图片上拖动框选水印区域。"
+  completed: "已完成",
+  pending: "等待中",
+  error: "处理失败",
+  noImages: "请先上传图片。",
+  unsupported: "仅支持 PNG、JPG、WebP 图片。",
+  tooLarge: "单张图片最大支持 20MB。",
+  downloadAll: "下载全部"
 };
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const acceptedTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 const dropArea = document.getElementById("drop-area");
 const fileInput = document.getElementById("fileElem");
-const modePanel = document.getElementById("modePanel");
-const modeTabs = document.querySelector(".mode-tabs");
-const autoModeBtn = document.getElementById("autoModeBtn");
-const autoModernModeBtn = document.getElementById("autoModernModeBtn");
-const manualModeBtn = document.getElementById("manualModeBtn");
-const manualHint = document.getElementById("manualHint");
-const originalWrap = document.getElementById("originalWrap");
-const processedWrap = document.getElementById("processedWrap");
-const selectionStage = document.getElementById("selectionStage");
-const selectionBox = document.getElementById("selectionBox");
-const originalImage = document.getElementById("originalImage");
-const processedImage = document.getElementById("processedImage");
-const processBtn = document.getElementById("processBtn");
-const downloadBtn = document.getElementById("downloadBtn");
+const engineStatus = document.getElementById("engineStatus");
+const queuePanel = document.getElementById("queuePanel");
+const queueList = document.getElementById("queueList");
+const completedCount = document.getElementById("completedCount");
+const totalCount = document.getElementById("totalCount");
+const downloadAllBtn = document.getElementById("downloadAllBtn");
+const clearAllBtn = document.getElementById("clearAllBtn");
 
-let originalDataUrl = null;
-let processedDataUrl = null;
-let watermarkRemover = null;
-let currentMode = "auto";
-let selection = null;
-let dragStart = null;
+let engine = null;
+let queue = [];
+let processingQueue = false;
 
 function preventDefaults(event) {
   event.preventDefault();
@@ -45,34 +41,23 @@ function unhighlight() {
   dropArea.classList.remove("highlight");
 }
 
-function getWatermarkConfig(width, height) {
-  if (width > 1024 && height > 1024) {
-    return { logoSize: 96, marginRight: 64, marginBottom: 64 };
-  }
-  return { logoSize: 48, marginRight: 32, marginBottom: 32 };
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
 }
 
-function getWatermarkArea(width, height, config) {
-  const size = config.logoSize;
-  return {
-    x: width - config.marginRight - size,
-    y: height - config.marginBottom - size,
-    width: size,
-    height: size
-  };
-}
-
-function getModernWatermarkArea(width, height, logoSize) {
-  const referenceWidth = 1792;
-  const referenceHeight = 2400;
-  const referenceX = 1416;
-  const referenceY = 2110;
-  return {
-    x: Math.round((width * referenceX) / referenceWidth),
-    y: Math.round((height * referenceY) / referenceHeight),
-    width: logoSize,
-    height: logoSize
-  };
+function captureImage(image) {
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas is not available.");
+  context.drawImage(image, 0, 0);
+  return context.getImageData(0, 0, canvas.width, canvas.height);
 }
 
 function imageDataToAlphaMap(imageData) {
@@ -80,10 +65,45 @@ function imageDataToAlphaMap(imageData) {
   const data = imageData.data;
   for (let index = 0; index < alphaMap.length; index += 1) {
     const offset = index * 4;
-    const maxChannel = Math.max(data[offset], data[offset + 1], data[offset + 2]);
-    alphaMap[index] = maxChannel / 255;
+    alphaMap[index] = Math.max(data[offset], data[offset + 1], data[offset + 2]) / 255;
   }
   return alphaMap;
+}
+
+function isLargeImage(width, height) {
+  return width > 1024 && height > 1024;
+}
+
+function getCurrentSmallMargin(width, height) {
+  const longer = Math.max(width, height);
+  const shorter = Math.min(width, height);
+  const divisor = shorter >= 566 ? 2752 : shorter >= 550 ? 2816 : 2848;
+  return Math.max(0, Math.round((longer / divisor) * 192));
+}
+
+function getWatermarkConfig(width, height, variant) {
+  if (variant === "legacy") {
+    return isLargeImage(width, height)
+      ? { variant, logoSize: 96, marginRight: 64, marginBottom: 64 }
+      : { variant, logoSize: 48, marginRight: 32, marginBottom: 32 };
+  }
+
+  if (isLargeImage(width, height)) {
+    return { variant, logoSize: 96, marginRight: 192, marginBottom: 192 };
+  }
+
+  const margin = getCurrentSmallMargin(width, height);
+  return { variant, logoSize: 36, marginRight: margin, marginBottom: margin };
+}
+
+function getWatermarkArea(width, height, config) {
+  const size = config.logoSize;
+  return {
+    x: Math.max(0, width - config.marginRight - size),
+    y: Math.max(0, height - config.marginBottom - size),
+    width: Math.min(size, width),
+    height: Math.min(size, height)
+  };
 }
 
 function clampArea(area, imageData) {
@@ -94,420 +114,433 @@ function clampArea(area, imageData) {
   return { x, y, width, height };
 }
 
-function removeWatermarkPixels(imageData, alphaMap, sourceSize, area, options = {}) {
-  const data = imageData.data;
-  const targetArea = clampArea(area, imageData);
-  const alphaThreshold = options.alphaThreshold ?? 0.002;
-  const strength = options.strength ?? 1;
+class GeminiWatermarkEngine {
+  constructor(captures) {
+    this.captures = captures;
+    this.alphaMaps = {};
+  }
 
-  for (let row = 0; row < targetArea.height; row += 1) {
-    for (let col = 0; col < targetArea.width; col += 1) {
-      const sourceX = Math.min(sourceSize - 1, Math.floor((col / targetArea.width) * sourceSize));
-      const sourceY = Math.min(sourceSize - 1, Math.floor((row / targetArea.height) * sourceSize));
-      let alpha = alphaMap[sourceY * sourceSize + sourceX];
-      if (alpha < alphaThreshold) continue;
+  static async create() {
+    const [bg48, bg96, bgB36, bgB96] = await Promise.all([
+      loadImage("assets/gemini-watermark-remover/bg_48.png"),
+      loadImage("assets/gemini-watermark-remover/bg_96.png"),
+      loadImage("assets/gemini-watermark-remover/bg_b_36.png"),
+      loadImage("assets/gemini-watermark-remover/bg_b_96.png")
+    ]);
 
-      const target = 4 * ((targetArea.y + row) * imageData.width + (targetArea.x + col));
-      alpha = Math.min(alpha * strength, 0.99);
-      const remaining = 1 - alpha;
-      for (let channel = 0; channel < 3; channel += 1) {
-        const restored = (data[target + channel] - 255 * alpha) / remaining;
-        data[target + channel] = Math.max(0, Math.min(255, Math.round(restored)));
+    return new GeminiWatermarkEngine({
+      legacy48: captureImage(bg48),
+      legacy96: captureImage(bg96),
+      current36: captureImage(bgB36),
+      current96: captureImage(bgB96)
+    });
+  }
+
+  hasCapture(variant, size) {
+    if (variant === "current") return size === 36 || size === 96;
+    return size === 48 || size === 96;
+  }
+
+  getCapture(variant, size) {
+    const key = `${variant}${size}`;
+    const capture = this.captures[key];
+    if (!capture) throw new Error(`Missing watermark template: ${key}`);
+    return capture;
+  }
+
+  getAlphaMap(variant, size) {
+    const key = `${variant}:${size}`;
+    if (!this.alphaMaps[key]) {
+      this.alphaMaps[key] = imageDataToAlphaMap(this.getCapture(variant, size));
+    }
+    return this.alphaMaps[key];
+  }
+
+  getCandidates(width, height) {
+    return ["current", "legacy"]
+      .map((variant) => getWatermarkConfig(width, height, variant))
+      .filter((config) => this.hasCapture(config.variant, config.logoSize))
+      .map((config) => ({
+        variant: config.variant,
+        size: config.logoSize,
+        config,
+        position: getWatermarkArea(width, height, config),
+        alphaMap: this.getAlphaMap(config.variant, config.logoSize),
+        confidence: 0
+      }));
+  }
+
+  scoreCandidate(imageData, alphaMap, area) {
+    const position = clampArea(area, imageData);
+    const { width, height } = position;
+    const pixelCount = width * height;
+    if (!pixelCount || alphaMap.length < pixelCount) return 0;
+
+    let sampleCount = 0;
+    let alphaSum = 0;
+    let brightnessSum = 0;
+    let alphaSquareSum = 0;
+    let brightnessSquareSum = 0;
+    let mixedSum = 0;
+
+    for (let row = 0; row < height; row += 1) {
+      for (let col = 0; col < width; col += 1) {
+        const alpha = alphaMap[row * width + col];
+        if (alpha < 0.01) continue;
+
+        const offset = ((position.y + row) * imageData.width + position.x + col) * 4;
+        const brightness = (imageData.data[offset] + imageData.data[offset + 1] + imageData.data[offset + 2]) / 765;
+
+        sampleCount += 1;
+        alphaSum += alpha;
+        brightnessSum += brightness;
+        alphaSquareSum += alpha * alpha;
+        brightnessSquareSum += brightness * brightness;
+        mixedSum += alpha * brightness;
       }
     }
-  }
-}
 
-function scoreWatermarkCandidate(imageData, alphaMap, sourceSize, x, y) {
-  const data = imageData.data;
-  let weightedBrightness = 0;
-  let weightedSaturation = 0;
-  let weight = 0;
-  let outsideBrightness = 0;
-  let outsideCount = 0;
+    if (sampleCount < 16) return 0;
 
-  for (let row = 0; row < sourceSize; row += 1) {
-    for (let col = 0; col < sourceSize; col += 1) {
-      const alpha = alphaMap[row * sourceSize + col];
-      const target = 4 * ((y + row) * imageData.width + (x + col));
-      const red = data[target];
-      const green = data[target + 1];
-      const blue = data[target + 2];
-      const maxChannel = Math.max(red, green, blue);
-      const minChannel = Math.min(red, green, blue);
+    const numerator = sampleCount * mixedSum - alphaSum * brightnessSum;
+    const alphaVariance = sampleCount * alphaSquareSum - alphaSum * alphaSum;
+    const brightnessVariance = sampleCount * brightnessSquareSum - brightnessSum * brightnessSum;
 
-      if (alpha > 0.06) {
-        weightedBrightness += maxChannel * alpha;
-        weightedSaturation += (maxChannel - minChannel) * alpha;
-        weight += alpha;
-      } else {
-        outsideBrightness += maxChannel;
-        outsideCount += 1;
-      }
-    }
+    if (alphaVariance <= 0 || brightnessVariance <= 0) return 0;
+    return Math.max(0, numerator / Math.sqrt(alphaVariance * brightnessVariance));
   }
 
-  if (!weight || !outsideCount) return -Infinity;
+  detect(imageData) {
+    const candidates = this.getCandidates(imageData.width, imageData.height);
+    let best = candidates[0];
 
-  const coreBrightness = weightedBrightness / weight;
-  const coreSaturation = weightedSaturation / weight;
-  const surroundingBrightness = outsideBrightness / outsideCount;
-  return (coreBrightness - surroundingBrightness) * 1.8 + coreBrightness * 0.2 - coreSaturation * 0.25;
-}
+    candidates.forEach((candidate) => {
+      candidate.confidence = this.scoreCandidate(imageData, candidate.alphaMap, candidate.position);
+      if (!best || candidate.confidence > best.confidence) best = candidate;
+    });
 
-function findManualWatermarkArea(imageData, alphaMap, sourceSize, selectedArea) {
-  const area = clampArea(selectedArea, imageData);
-  const centerX = area.x + area.width / 2;
-  const centerY = area.y + area.height / 2;
-
-  if (area.width < sourceSize * 1.6 && area.height < sourceSize * 1.6) {
-    return forceFixedWatermarkArea(imageData, area, sourceSize);
+    return best;
   }
 
-  const minX = Math.max(0, Math.round(area.x));
-  const minY = Math.max(0, Math.round(area.y));
-  const maxX = Math.min(imageData.width - sourceSize, Math.round(area.x + area.width - sourceSize));
-  const maxY = Math.min(imageData.height - sourceSize, Math.round(area.y + area.height - sourceSize));
+  removeReverseAlpha(imageData, candidate) {
+    const data = imageData.data;
+    const area = clampArea(candidate.position, imageData);
+    const alphaMap = candidate.alphaMap;
 
-  if (maxX < minX || maxY < minY) {
-    return forceFixedWatermarkArea(imageData, area, sourceSize);
-  }
+    for (let row = 0; row < area.height; row += 1) {
+      for (let col = 0; col < area.width; col += 1) {
+        let alpha = alphaMap[row * area.width + col];
+        if (alpha < 0.002) continue;
 
-  let bestArea = {
-    x: Math.max(0, Math.min(imageData.width - sourceSize, Math.round(centerX - sourceSize / 2))),
-    y: Math.max(0, Math.min(imageData.height - sourceSize, Math.round(centerY - sourceSize / 2))),
-    width: sourceSize,
-    height: sourceSize
-  };
-  let bestScore = scoreWatermarkCandidate(imageData, alphaMap, sourceSize, bestArea.x, bestArea.y);
-  const step = sourceSize >= 96 ? 4 : 2;
+        alpha = Math.min(alpha, 0.99);
+        const remaining = 1 - alpha;
+        const offset = ((area.y + row) * imageData.width + area.x + col) * 4;
 
-  for (let y = minY; y <= maxY; y += step) {
-    for (let x = minX; x <= maxX; x += step) {
-      const score = scoreWatermarkCandidate(imageData, alphaMap, sourceSize, x, y);
-      if (score > bestScore) {
-        bestScore = score;
-        bestArea = { x, y, width: sourceSize, height: sourceSize };
-      }
-    }
-  }
-
-  return bestArea;
-}
-
-function repairWatermarkShapePixels(imageData, alphaMap, sourceSize, area, options = {}) {
-  const data = imageData.data;
-  const targetArea = clampArea(area, imageData);
-  const threshold = options.alphaThreshold ?? 0.04;
-  const expand = options.expand ?? 0;
-  const mask = new Set();
-  let remaining = 0;
-
-  for (let row = 0; row < targetArea.height; row += 1) {
-    for (let col = 0; col < targetArea.width; col += 1) {
-      const sourceX = Math.min(sourceSize - 1, Math.floor((col / targetArea.width) * sourceSize));
-      const sourceY = Math.min(sourceSize - 1, Math.floor((row / targetArea.height) * sourceSize));
-      if (alphaMap[sourceY * sourceSize + sourceX] <= threshold) continue;
-
-      for (let dy = -expand; dy <= expand; dy += 1) {
-        for (let dx = -expand; dx <= expand; dx += 1) {
-          const x = targetArea.x + col + dx;
-          const y = targetArea.y + row + dy;
-          if (x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) continue;
-
-          const key = y * imageData.width + x;
-          if (!mask.has(key)) {
-            mask.add(key);
-            remaining += 1;
-          }
+        for (let channel = 0; channel < 3; channel += 1) {
+          const restored = (data[offset + channel] - 255 * alpha) / remaining;
+          data[offset + channel] = Math.max(0, Math.min(255, Math.round(restored)));
         }
       }
     }
   }
 
-  if (!remaining) return;
+  repairRect(imageData, area, radius = 10) {
+    const target = clampArea(area, imageData);
+    const mask = new Uint8Array(imageData.width * imageData.height);
 
-  const working = new Uint8ClampedArray(data);
-  const filled = new Set();
-  const maxIterations = sourceSize + 12;
-  const neighbors = [
-    [-1, -1], [0, -1], [1, -1],
-    [-1, 0], [1, 0],
-    [-1, 1], [0, 1], [1, 1]
-  ];
+    for (let y = target.y; y < target.y + target.height; y += 1) {
+      for (let x = target.x; x < target.x + target.width; x += 1) {
+        mask[y * imageData.width + x] = 1;
+      }
+    }
 
-  for (let iteration = 0; iteration < maxIterations && remaining > 0; iteration += 1) {
-    const updates = [];
+    const repaired = this.inpaint(imageData, mask, radius);
+    imageData.data.set(repaired.data);
+  }
 
-    mask.forEach((key) => {
-      if (filled.has(key)) return;
+  inpaint(imageData, mask, radius) {
+    const { width, height, data } = imageData;
+    const output = new Uint8ClampedArray(data);
+    const distance = new Float32Array(width * height).fill(Infinity);
+    const known = new Uint8Array(width * height);
+    const queueItems = [];
+    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
-      const x = key % imageData.width;
-      const y = Math.floor(key / imageData.width);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = y * width + x;
+        if (!mask[index]) {
+          known[index] = 1;
+          distance[index] = 0;
+        }
+      }
+    }
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = y * width + x;
+        if (!mask[index]) continue;
+
+        for (const [dx, dy] of directions) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          if (!mask[ny * width + nx]) {
+            distance[index] = 1;
+            queueItems.push({ x, y, dist: 1 });
+            break;
+          }
+        }
+      }
+    }
+
+    queueItems.sort((a, b) => a.dist - b.dist);
+
+    while (queueItems.length) {
+      const current = queueItems.shift();
+      const index = current.y * width + current.x;
+      if (known[index]) continue;
+
+      let totalWeight = 0;
       let red = 0;
       let green = 0;
       let blue = 0;
-      let count = 0;
 
-      neighbors.forEach(([dx, dy]) => {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= imageData.width || ny >= imageData.height) return;
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          const nx = current.x + dx;
+          const ny = current.y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
 
-        const neighborKey = ny * imageData.width + nx;
-        if (mask.has(neighborKey) && !filled.has(neighborKey)) return;
+          const neighborIndex = ny * width + nx;
+          if (!known[neighborIndex]) continue;
 
-        const offset = neighborKey * 4;
-        red += working[offset];
-        green += working[offset + 1];
-        blue += working[offset + 2];
-        count += 1;
-      });
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= 0 || dist > radius) continue;
 
-      if (count >= 2) {
-        updates.push({ key, red: red / count, green: green / count, blue: blue / count });
+          const weight = 1 / (dist * dist);
+          const offset = neighborIndex * 4;
+          red += output[offset] * weight;
+          green += output[offset + 1] * weight;
+          blue += output[offset + 2] * weight;
+          totalWeight += weight;
+        }
       }
-    });
 
-    if (!updates.length) break;
-
-    updates.forEach(({ key, red, green, blue }) => {
-      const offset = key * 4;
-      working[offset] = Math.round(red);
-      working[offset + 1] = Math.round(green);
-      working[offset + 2] = Math.round(blue);
-      filled.add(key);
-      remaining -= 1;
-    });
-  }
-
-  mask.forEach((key) => {
-    const offset = key * 4;
-    data[offset] = working[offset];
-    data[offset + 1] = working[offset + 1];
-    data[offset + 2] = working[offset + 2];
-  });
-}
-
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = reject;
-    image.src = src;
-  });
-}
-
-class GeminiWatermarkRemover {
-  constructor(bg48, bg96) {
-    this.bg48 = bg48;
-    this.bg96 = bg96;
-    this.alphaMaps = {};
-  }
-
-  static async create() {
-    const [bg48, bg96] = await Promise.all([
-      loadImage("assets/gemini-watermark-remover/bg_48.png"),
-      loadImage("assets/gemini-watermark-remover/bg_96.png")
-    ]);
-    return new GeminiWatermarkRemover(bg48, bg96);
-  }
-
-  getAlphaMap(size) {
-    if (this.alphaMaps[size]) return this.alphaMaps[size];
-
-    const source = size === 48 ? this.bg48 : this.bg96;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext("2d");
-    context.drawImage(source, 0, 0);
-    const imageData = context.getImageData(0, 0, size, size);
-    const alphaMap = imageDataToAlphaMap(imageData);
-    this.alphaMaps[size] = alphaMap;
-    return alphaMap;
-  }
-}
-
-function setMode(mode) {
-  currentMode = mode;
-  const isManual = mode === "manual";
-  const isAutoModern = mode === "autoModern";
-
-  autoModeBtn.classList.toggle("active", mode === "auto");
-  autoModernModeBtn.classList.toggle("active", isAutoModern);
-  manualModeBtn.classList.toggle("active", isManual);
-  selectionStage.classList.toggle("manual-active", isManual);
-  manualHint.classList.toggle("hidden", !isManual);
-  processBtn.textContent = isManual
-    ? text.processManual
-    : isAutoModern
-      ? text.processAutoModern
-      : text.processAuto;
-
-  if (!isManual) {
-    selectionBox.classList.add("hidden");
-  } else if (selection) {
-    drawSelection();
-  }
-}
-
-function resetResult() {
-  processedDataUrl = null;
-  processedImage.removeAttribute("src");
-  processedWrap.classList.add("hidden");
-  processBtn.classList.remove("hidden");
-  downloadBtn.classList.add("hidden");
-}
-
-function showOriginal(dataUrl) {
-  originalDataUrl = dataUrl;
-  originalImage.src = dataUrl;
-  selection = null;
-  selectionBox.classList.add("hidden");
-  originalWrap.classList.remove("hidden");
-  modePanel.classList.remove("hidden");
-  resetResult();
-  setMode(currentMode);
-}
-
-function handleFile(file) {
-  if (!file || !file.type.includes("image/")) return;
-
-  const reader = new FileReader();
-  reader.onload = (event) => showOriginal(event.target.result);
-  reader.readAsDataURL(file);
-}
-
-function getStagePoint(event) {
-  const rect = selectionStage.getBoundingClientRect();
-  return {
-    x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
-    y: Math.max(0, Math.min(rect.height, event.clientY - rect.top))
-  };
-}
-
-function drawSelection() {
-  if (!selection) return;
-
-  selectionBox.style.left = `${selection.x}px`;
-  selectionBox.style.top = `${selection.y}px`;
-  selectionBox.style.width = `${selection.width}px`;
-  selectionBox.style.height = `${selection.height}px`;
-  selectionBox.classList.remove("hidden");
-}
-
-function updateManualSelection(currentPoint) {
-  const rect = selectionStage.getBoundingClientRect();
-  const x = Math.max(0, Math.min(dragStart.x, currentPoint.x));
-  const y = Math.max(0, Math.min(dragStart.y, currentPoint.y));
-  const right = Math.min(rect.width, Math.max(dragStart.x, currentPoint.x));
-  const bottom = Math.min(rect.height, Math.max(dragStart.y, currentPoint.y));
-  selection = { x, y, width: right - x, height: bottom - y };
-  drawSelection();
-}
-
-function getSelectionInImagePixels(image) {
-  if (!selection || selection.width < 4 || selection.height < 4) return null;
-
-  const rect = originalImage.getBoundingClientRect();
-  const scaleX = image.width / rect.width;
-  const scaleY = image.height / rect.height;
-  return {
-    x: selection.x * scaleX,
-    y: selection.y * scaleY,
-    width: selection.width * scaleX,
-    height: selection.height * scaleY
-  };
-}
-
-function forceFixedWatermarkArea(imageData, area, sourceSize) {
-  const centerX = area.x + area.width / 2;
-  const centerY = area.y + area.height / 2;
-  return {
-    x: Math.max(0, Math.min(imageData.width - sourceSize, Math.round(centerX - sourceSize / 2))),
-    y: Math.max(0, Math.min(imageData.height - sourceSize, Math.round(centerY - sourceSize / 2))),
-    width: sourceSize,
-    height: sourceSize
-  };
-}
-
-async function processImage() {
-  if (!originalDataUrl || !watermarkRemover) return;
-
-  processBtn.disabled = true;
-  processBtn.textContent = text.processing;
-
-  try {
-    const image = await loadImage(originalDataUrl);
-    const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
-
-    const context = canvas.getContext("2d");
-    context.drawImage(image, 0, 0);
-
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    let config;
-    let area;
-
-    if (currentMode === "manual") {
-      area = getSelectionInImagePixels(image);
-      if (!area) {
-        alert(text.selectArea);
-        return;
+      if (totalWeight > 0) {
+        const offset = index * 4;
+        output[offset] = red / totalWeight;
+        output[offset + 1] = green / totalWeight;
+        output[offset + 2] = blue / totalWeight;
+        output[offset + 3] = 255;
       }
-      const expectedSize = getWatermarkConfig(image.width, image.height).logoSize;
-      config = { logoSize: expectedSize };
-      const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
-      area = findManualWatermarkArea(imageData, alphaMap, config.logoSize, area);
-      repairWatermarkShapePixels(imageData, alphaMap, config.logoSize, area, {
-        alphaThreshold: 0.04
-      });
-    } else if (currentMode === "autoModern") {
-      config = getWatermarkConfig(image.width, image.height);
-      area = getModernWatermarkArea(image.width, image.height, config.logoSize);
-      const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
-      repairWatermarkShapePixels(imageData, alphaMap, config.logoSize, area, {
-        alphaThreshold: 0.006,
-        expand: config.logoSize >= 96 ? 2 : 1
-      });
-    } else {
-      config = getWatermarkConfig(image.width, image.height);
-      area = getWatermarkArea(image.width, image.height, config);
-      const alphaMap = watermarkRemover.getAlphaMap(config.logoSize);
-      removeWatermarkPixels(imageData, alphaMap, config.logoSize, area, {
-        alphaThreshold: 0.002,
-        strength: 1
-      });
+
+      known[index] = 1;
+
+      for (const [dx, dy] of directions) {
+        const nx = current.x + dx;
+        const ny = current.y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+
+        const neighborIndex = ny * width + nx;
+        if (mask[neighborIndex] && !known[neighborIndex] && distance[neighborIndex] === Infinity) {
+          distance[neighborIndex] = distance[index] + 1;
+          queueItems.push({ x: nx, y: ny, dist: distance[neighborIndex] });
+          queueItems.sort((a, b) => a.dist - b.dist);
+        }
+      }
     }
-    context.putImageData(imageData, 0, 0);
 
-    processedDataUrl = canvas.toDataURL("image/png");
-    processedImage.src = processedDataUrl;
-    processedWrap.classList.remove("hidden");
-    processBtn.classList.add("hidden");
-    downloadBtn.classList.remove("hidden");
-  } catch (error) {
-    console.error(error);
-    alert(text.error);
-  } finally {
-    processBtn.disabled = false;
-    processBtn.textContent = currentMode === "manual"
-      ? text.processManual
-      : currentMode === "autoModern"
-        ? text.processAutoModern
-        : text.processAuto;
+    return new ImageData(output, width, height);
+  }
+
+  process(imageData) {
+    const candidate = this.detect(imageData);
+    if (candidate.variant === "legacy" && candidate.confidence >= 0.08) {
+      this.removeReverseAlpha(imageData, candidate);
+    } else {
+      this.repairRect(imageData, candidate.position, 10);
+    }
+    return candidate;
   }
 }
 
-function downloadProcessedImage() {
-  if (!processedDataUrl) return;
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
+function renderQueue() {
+  queuePanel.classList.toggle("hidden", queue.length === 0);
+  completedCount.textContent = queue.filter((item) => item.status === "completed").length;
+  totalCount.textContent = queue.length;
+  downloadAllBtn.disabled = !queue.some((item) => item.status === "completed");
+
+  queueList.innerHTML = queue.map((item) => {
+    const statusText = item.status === "completed"
+      ? text.completed
+      : item.status === "processing"
+        ? text.processing
+        : item.status === "error"
+          ? text.error
+          : text.pending;
+    const preview = item.processedUrl || item.originalUrl || "";
+    const detail = item.variant
+      ? `${item.variant === "current" ? "新版" : "旧版"}水印 · 匹配度 ${Math.round(item.confidence * 100)}%`
+      : "";
+
+    return `
+      <article class="queue-card" data-id="${item.id}">
+        <div class="queue-preview">
+          ${preview ? `<img src="${preview}" alt="${escapeHtml(item.name)}">` : ""}
+          ${item.status === "processing" ? '<div class="queue-overlay">处理中...</div>' : ""}
+        </div>
+        <div class="queue-card-body">
+          <p class="queue-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</p>
+          <div class="queue-meta">
+            <span class="status-badge ${item.status}">${statusText}</span>
+            ${detail ? `<span>${detail}</span>` : ""}
+          </div>
+          ${item.error ? `<p class="queue-error">${escapeHtml(item.error)}</p>` : ""}
+          ${item.status === "completed" ? `<button type="button" class="btn btn-primary queue-download" data-download="${item.id}">下载</button>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function addFiles(fileList) {
+  if (!fileList || !fileList.length) return;
+
+  const files = Array.from(fileList).filter((file) => {
+    if (!acceptedTypes.has(file.type)) {
+      alert(`${file.name}: ${text.unsupported}`);
+      return false;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`${file.name}: ${text.tooLarge}`);
+      return false;
+    }
+    return true;
+  });
+
+  const items = files.map((file) => ({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    file,
+    name: file.name,
+    status: "pending",
+    originalUrl: URL.createObjectURL(file),
+    processedUrl: null,
+    processedBlob: null,
+    error: null,
+    variant: null,
+    confidence: 0
+  }));
+
+  queue = [...queue, ...items];
+  renderQueue();
+  processPendingItems();
+}
+
+async function processPendingItems() {
+  if (processingQueue || !engine) return;
+  processingQueue = true;
+
+  while (queue.some((item) => item.status === "pending")) {
+    const item = queue.find((entry) => entry.status === "pending");
+    if (!item) break;
+    item.status = "processing";
+    renderQueue();
+
+    try {
+      const image = await loadImage(item.originalUrl);
+      const imageData = captureImage(image);
+      const candidate = engine.process(imageData);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = imageData.width;
+      canvas.height = imageData.height;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas is not available.");
+      context.putImageData(imageData, 0, 0);
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) resolve(result);
+          else reject(new Error("Failed to create output image."));
+        }, "image/png");
+      });
+
+      item.status = "completed";
+      item.processedBlob = blob;
+      item.processedUrl = URL.createObjectURL(blob);
+      item.variant = candidate.variant;
+      item.confidence = candidate.confidence;
+    } catch (error) {
+      item.status = "error";
+      item.error = error instanceof Error ? error.message : String(error);
+    }
+
+    renderQueue();
+  }
+
+  processingQueue = false;
+}
+
+function getOutputName(name) {
+  return `unwatermarked_${name.replace(/\.[^.]+$/, "")}.png`;
+}
+
+function downloadItem(item) {
+  if (!item || !item.processedUrl) return;
   const link = document.createElement("a");
-  link.href = processedDataUrl;
-  link.download = "aitian-gemini-watermark-removed.png";
+  link.href = item.processedUrl;
+  link.download = getOutputName(item.name);
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
+}
+
+async function downloadAll() {
+  const completed = queue.filter((item) => item.status === "completed" && item.processedBlob);
+  if (!completed.length) return;
+  if (completed.length === 1) {
+    downloadItem(completed[0]);
+    return;
+  }
+
+  if (!window.JSZip) {
+    completed.forEach(downloadItem);
+    return;
+  }
+
+  const zip = new window.JSZip();
+  completed.forEach((item) => {
+    zip.file(getOutputName(item.name), item.processedBlob);
+  });
+
+  const blob = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `unwatermarked_${Date.now()}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function clearQueue() {
+  queue.forEach((item) => {
+    if (item.originalUrl) URL.revokeObjectURL(item.originalUrl);
+    if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+  });
+  queue = [];
+  renderQueue();
+  fileInput.value = "";
 }
 
 ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
@@ -523,61 +556,35 @@ function downloadProcessedImage() {
 });
 
 dropArea.addEventListener("drop", (event) => {
-  const files = event.dataTransfer.files;
-  if (files.length) handleFile(files[0]);
+  addFiles(event.dataTransfer.files);
 });
 
 dropArea.addEventListener("paste", (event) => {
-  const files = event.clipboardData.files;
-  if (files.length) handleFile(files[0]);
+  addFiles(event.clipboardData.files);
 });
 
 fileInput.addEventListener("change", (event) => {
-  const file = event.target.files && event.target.files[0];
-  if (file) handleFile(file);
+  addFiles(event.target.files);
 });
 
-modeTabs.addEventListener("click", (event) => {
-  const modeButton = event.target.closest("[data-mode]");
-  if (!modeButton) return;
-  setMode(modeButton.dataset.mode);
+queueList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-download]");
+  if (!button) return;
+  downloadItem(queue.find((item) => item.id === button.dataset.download));
 });
 
-selectionStage.addEventListener("pointerdown", (event) => {
-  if (currentMode !== "manual" || !originalDataUrl) return;
-  event.preventDefault();
-  resetResult();
-  dragStart = getStagePoint(event);
-  selection = { x: dragStart.x, y: dragStart.y, width: 0, height: 0 };
-  selectionStage.setPointerCapture(event.pointerId);
-  drawSelection();
-});
+downloadAllBtn.addEventListener("click", downloadAll);
+clearAllBtn.addEventListener("click", clearQueue);
 
-selectionStage.addEventListener("pointermove", (event) => {
-  if (!dragStart || currentMode !== "manual") return;
-  event.preventDefault();
-  updateManualSelection(getStagePoint(event));
-});
-
-selectionStage.addEventListener("pointerup", (event) => {
-  if (!dragStart || currentMode !== "manual") return;
-  event.preventDefault();
-  updateManualSelection(getStagePoint(event));
-  dragStart = null;
-});
-
-selectionStage.addEventListener("pointercancel", () => {
-  dragStart = null;
-});
-
-processBtn.addEventListener("click", processImage);
-downloadBtn.addEventListener("click", downloadProcessedImage);
-
-GeminiWatermarkRemover.create()
-  .then((remover) => {
-    watermarkRemover = remover;
+GeminiWatermarkEngine.create()
+  .then((createdEngine) => {
+    engine = createdEngine;
+    engineStatus.textContent = text.ready;
+    engineStatus.classList.add("ready");
+    processPendingItems();
   })
   .catch((error) => {
     console.error(error);
-    alert(text.error);
+    engineStatus.textContent = "引擎加载失败，请刷新页面重试。";
+    engineStatus.classList.add("error");
   });

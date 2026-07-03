@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gemini 图片水印去除工具 - 自动识别与手动框选</title>
-    <meta name="description" content="免费的 Gemini 图片水印去除工具，支持自动识别和手动框选 2 种模式。图片仅在浏览器本地处理，不上传服务器，适合快速清理 AI 生成图片。">
-    <meta name="keywords" content="Gemini水印去除, AI图片去水印, Gemini图片工具, 手动框选去水印">
+    <title>Gemini 图片水印去除工具 - 自动识别与批量处理</title>
+    <meta name="description" content="免费的 Gemini 图片水印去除工具，支持自动识别新版和旧版水印，支持多图批量处理和一键导出。图片仅在浏览器本地处理，不上传服务器。">
+    <meta name="keywords" content="Gemini水印去除, AI图片去水印, Gemini图片工具, 批量去水印">
     <link rel="canonical" href="https://aitian.site/">
     <meta name="robots" content="index,follow,max-image-preview:large">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="AI Tian">
     <meta property="og:title" content="Gemini 图片水印去除工具">
-    <meta property="og:description" content="自动识别或手动框选 Gemini 图片水印，在浏览器本地完成处理。">
+    <meta property="og:description" content="自动识别新版和旧版 Gemini 图片水印，支持多图批量处理，图片在浏览器本地完成。">
     <meta property="og:url" content="https://aitian.site/">
     <meta property="og:image" content="https://aitian.site/assets/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Gemini 图片水印去除工具">
-    <meta name="twitter:description" content="支持自动识别和手动框选，图片仅在本地浏览器处理。">
+    <meta name="twitter:description" content="支持自动识别和批量处理，图片仅在本地浏览器处理。">
     <meta name="twitter:image" content="https://aitian.site/assets/og-image.png">
     <link rel="icon" href="assets/logo.png">
     <link rel="stylesheet" href="styles.css">
@@ -35,7 +35,7 @@
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Web",
         "url": "https://aitian.site/",
-        "description": "一款在浏览器本地处理图片的 Gemini 图片水印去除工具，支持自动识别和手动框选。",
+        "description": "一款在浏览器本地处理图片的 Gemini 图片水印去除工具，支持自动识别新版和旧版水印，并支持批量导出。",
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -58,10 +58,10 @@
           },
           {
             "@type": "Question",
-            "name": "自动模式和手动框选有什么区别？",
+            "name": "现在还需要手动框选吗？",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "自动模式适合常见的右下角 Gemini 水印；如果水印位置变化，可以切换手动框选模式，在原图上拖动选择水印区域后再处理。"
+              "text": "不需要。当前版本会自动检测新版和旧版 Gemini 水印位置，并根据匹配结果选择处理方式。"
             }
           }
         ]
@@ -86,9 +86,9 @@
     <main>
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">浏览器本地处理 · 自动识别 · 手动框选</p>
+          <p class="eyebrow">浏览器本地处理 · 自动识别 · 支持批量</p>
           <h1>Gemini 图片水印去除工具</h1>
-          <p class="hero-subtitle">上传 Gemini 生成图片后，可以一键自动清理常见水印；如果水印位置变化，也可以直接在原图上拖出选区进行处理。</p>
+          <p class="hero-subtitle">上传 Gemini 生成图片后，工具会自动判断新版或旧版水印位置并本地处理；支持一次上传多张图片，处理完成后一键导出。</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#tool">开始处理图片</a>
             <a class="btn btn-plain" href="#privacy-note">查看隐私说明</a>
@@ -116,51 +116,39 @@
 
       <section id="tool" class="tool-shell" aria-label="Gemini 去水印工具">
         <div class="tool-heading">
-          <h2>选择图片并处理水印</h2>
-          <p>建议优先使用自动模式。如果水印不在常规位置，切换到手动框选模式。</p>
+          <h2>批量选择图片并自动去水印</h2>
+          <p>支持 PNG、JPG、WebP，多张图片会自动排队处理，图片不会上传到服务器。</p>
         </div>
 
         <div id="drop-area">
           <form class="my-form">
-            <p>拖放图片到这里，或点击选择</p>
-            <input type="file" id="fileElem" accept="image/*">
+            <p>拖放图片到这里，或点击选择多张图片</p>
+            <input type="file" id="fileElem" accept="image/png,image/jpeg,image/webp" multiple>
             <label for="fileElem" class="btn btn-primary upload-label">上传图片</label>
           </form>
         </div>
 
-        <div class="mode-panel hidden" id="modePanel">
-          <div class="mode-tabs" role="tablist" aria-label="处理模式">
-            <button type="button" id="autoModeBtn" class="mode-tab active" data-mode="auto">自动检测消除</button>
-            <button type="button" id="autoModernModeBtn" class="mode-tab" data-mode="autoModern">自动消除2</button>
-            <button type="button" id="manualModeBtn" class="mode-tab" data-mode="manual">手动定位消除</button>
-          </div>
-          <p id="manualHint" class="manual-hint hidden">在原图上框出水印附近的大致范围即可，工具会在框内定位 Gemini 菱形水印，只修复水印形状覆盖的区域。</p>
-        </div>
+        <div class="engine-status" id="engineStatus">引擎初始化中...</div>
 
-        <div class="images-container" aria-live="polite">
-          <div class="image-wrapper hidden" id="originalWrap">
-            <h3>原始图片</h3>
-            <div class="selection-stage" id="selectionStage">
-              <img id="originalImage" alt="待处理的原始图片">
-              <div class="selection-box hidden" id="selectionBox"></div>
+        <div class="queue-panel hidden" id="queuePanel" aria-live="polite">
+          <div class="queue-header">
+            <div>
+              <h3>处理队列</h3>
+              <p><span id="completedCount">0</span>/<span id="totalCount">0</span> 张已完成</p>
+            </div>
+            <div class="queue-actions">
+              <button type="button" id="downloadAllBtn" class="btn btn-primary" disabled>下载全部</button>
+              <button type="button" id="clearAllBtn" class="btn btn-plain">清空</button>
             </div>
           </div>
-          <div class="image-wrapper hidden" id="processedWrap">
-            <h3>处理后图片</h3>
-            <img id="processedImage" alt="去除水印后的图片预览">
-          </div>
-        </div>
-
-        <div class="actions">
-          <button type="button" id="processBtn" class="btn btn-success hidden">去除水印</button>
-          <button type="button" id="downloadBtn" class="btn btn-primary hidden">下载图片</button>
+          <div class="queue-list" id="queueList"></div>
         </div>
       </section>
 
       <section class="feature-grid" aria-label="工具特点">
         <article>
-          <h2>为什么做成两种模式？</h2>
-          <p>Gemini 图片水印有时出现在常见位置，有时又会因为图片尺寸、裁剪或二次编辑而偏移。工具保留自动处理效率，同时加入手动框选来覆盖更多真实场景。</p>
+          <h2>为什么能自动识别？</h2>
+          <p>新版和旧版 Gemini 水印的位置、尺寸和透明度不同。工具会同时检测两类候选水印，并选择匹配度更高的一种处理。</p>
         </article>
         <article id="privacy-note">
           <h2>图片只在本地处理</h2>
@@ -168,7 +156,7 @@
         </article>
         <article>
           <h2>适合什么图片？</h2>
-          <p>它更适合 Gemini 生成图中半透明标识类水印。对于复杂遮挡、彩色大面积水印或已经严重压缩的图片，建议配合手动框选并尝试更精准的选区。</p>
+          <p>它更适合 Gemini 原图或接近原图的图片。对压缩、截图或转存后的图片，工具会自动切换到区域修复方式。</p>
         </article>
       </section>
 
@@ -176,10 +164,10 @@
         <div>
           <h2>如何去除 Gemini 水印？</h2>
           <ol>
-            <li>上传一张需要处理的 Gemini 生成图片。</li>
-            <li>先使用“自动检测消除”，快速处理常见右下角水印。</li>
-            <li>如果水印位置不同，切换“手动框选消除”，在原图上拖动选择水印区域。</li>
-            <li>预览处理后图片，确认无误后下载 PNG 文件。</li>
+            <li>上传一张或多张需要处理的 Gemini 生成图片。</li>
+            <li>等待工具自动检测新版或旧版 Gemini 水印。</li>
+            <li>处理完成后，可以单张下载，也可以一键下载全部结果。</li>
+            <li>多张图片会自动打包为 ZIP 文件。</li>
           </ol>
         </div>
         <div class="ad-slot" aria-label="广告位" hidden>
@@ -194,8 +182,8 @@
           <p>是的，当前网页工具免费使用。后续如果增加批量处理或更高级的图片修复能力，可能会单独说明。</p>
         </details>
         <details>
-          <summary>为什么要提供手动框选？</summary>
-          <p>自动模式依赖常见水印位置。真实图片可能经过裁剪、缩放或二次编辑，手动框选可以让处理范围更准确。</p>
+          <summary>它怎么判断水印位置？</summary>
+          <p>不需要。当前版本会自动检测新版和旧版 Gemini 水印位置，并根据匹配结果选择处理方式。</p>
         </details>
         <details>
           <summary>它能去除所有水印吗？</summary>
@@ -217,6 +205,7 @@
       </nav>
     </footer>
 
-    <script src="script.js?v=20260702-auto2"></script>
+    <script src="assets/vendor/jszip.min.js"></script>
+    <script src="script.js?v=20260703-markcut-engine"></script>
   </body>
 </html>
