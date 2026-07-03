@@ -356,10 +356,12 @@ class GeminiWatermarkEngine {
 
   process(imageData) {
     const candidate = this.detect(imageData);
-    if (candidate.variant === "legacy" && candidate.confidence >= 0.08) {
+    if (candidate.confidence >= 0.08) {
       this.removeReverseAlpha(imageData, candidate);
+      candidate.method = "reverse";
     } else {
       this.repairRect(imageData, candidate.position, 10);
+      candidate.method = "repair";
     }
     return candidate;
   }
@@ -389,7 +391,7 @@ function renderQueue() {
           : text.pending;
     const preview = item.processedUrl || item.originalUrl || "";
     const detail = item.variant
-      ? `${item.variant === "current" ? "新版" : "旧版"}水印 · 匹配度 ${Math.round(item.confidence * 100)}%`
+      ? `${item.variant === "current" ? "新版" : "旧版"}水印 · ${item.method === "reverse" ? "反向 Alpha" : "区域修复"} · 匹配度 ${Math.round(item.confidence * 100)}%`
       : "";
 
     return `
@@ -437,7 +439,8 @@ function addFiles(fileList) {
     processedBlob: null,
     error: null,
     variant: null,
-    confidence: 0
+    confidence: 0,
+    method: null
   }));
 
   queue = [...queue, ...items];
@@ -479,6 +482,7 @@ async function processPendingItems() {
       item.processedUrl = URL.createObjectURL(blob);
       item.variant = candidate.variant;
       item.confidence = candidate.confidence;
+      item.method = candidate.method;
     } catch (error) {
       item.status = "error";
       item.error = error instanceof Error ? error.message : String(error);
