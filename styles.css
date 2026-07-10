@@ -93,6 +93,7 @@ main {
 .hero,
 .tool-shell,
 .feature-grid,
+.seo-band,
 .content-band,
 .faq-section {
   margin: 0 auto;
@@ -623,6 +624,47 @@ h3 {
   padding: 1.2rem;
 }
 
+.seo-band {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-top: 2rem;
+  padding: clamp(1.2rem, 3vw, 2rem);
+}
+
+.seo-intro {
+  max-width: 760px;
+}
+
+.seo-intro p,
+.seo-band p {
+  color: var(--muted);
+}
+
+.seo-cards {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 1.2rem;
+}
+
+.seo-cards article {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.seo-cards p {
+  margin-bottom: 0;
+}
+
+.seo-band.compact {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .feature-grid p,
 .content-band p,
 .faq-section p {
@@ -730,6 +772,8 @@ h3 {
   }
 
   .feature-grid,
+  .seo-cards,
+  .seo-band.compact,
   .content-band {
     grid-template-columns: 1fr;
   }

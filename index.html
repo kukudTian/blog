@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gemini 图片水印去除工具 - 自动识别与批量处理</title>
-    <meta name="description" content="免费的 Gemini 图片水印去除工具，支持自动识别新版和旧版水印，支持多图批量处理和一键导出。图片仅在浏览器本地处理，不上传服务器。">
-    <meta name="keywords" content="Gemini水印去除, AI图片去水印, Gemini图片工具, 批量去水印">
+    <title>Gemini 水印去除工具 - 免费在线批量去除 Gemini 图片水印</title>
+    <meta name="description" content="免费 Gemini 水印去除工具，支持新版 Gemini 和 Nano Banana 图片水印自动识别、多图批量处理、一键 ZIP 导出。图片在浏览器本地处理，不上传服务器。">
+    <meta name="keywords" content="Gemini水印去除, Gemini图片水印去除, Nano Banana水印去除, AI图片去水印, 批量去水印, 在线去水印工具">
     <link rel="canonical" href="https://aitian.site/">
     <meta name="robots" content="index,follow,max-image-preview:large">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="AI Tian">
-    <meta property="og:title" content="Gemini 图片水印去除工具">
-    <meta property="og:description" content="自动识别新版和旧版 Gemini 图片水印，支持多图批量处理，图片在浏览器本地完成。">
+    <meta property="og:title" content="Gemini 水印去除工具 - 免费在线批量处理">
+    <meta property="og:description" content="自动识别新版和旧版 Gemini 图片水印，支持多图批量处理和 ZIP 导出，图片在浏览器本地完成。">
     <meta property="og:url" content="https://aitian.site/">
     <meta property="og:image" content="https://aitian.site/assets/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Gemini 图片水印去除工具">
-    <meta name="twitter:description" content="支持自动识别和批量处理，图片仅在本地浏览器处理。">
+    <meta name="twitter:title" content="Gemini 水印去除工具 - 免费在线批量处理">
+    <meta name="twitter:description" content="支持 Gemini 和 Nano Banana 图片水印自动识别、多图批量处理，图片仅在本地浏览器处理。">
     <meta name="twitter:image" content="https://aitian.site/assets/og-image.png">
     <link rel="icon" href="assets/logo.png">
     <link rel="stylesheet" href="styles.css">
@@ -31,11 +31,28 @@
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "Gemini 图片水印去除工具",
+        "name": "Gemini 水印去除工具",
+        "alternateName": [
+          "Gemini 图片水印去除",
+          "Nano Banana 水印去除",
+          "Gemini Watermark Remover"
+        ],
         "applicationCategory": "MultimediaApplication",
         "operatingSystem": "Web",
+        "browserRequirements": "Requires JavaScript and a modern browser",
         "url": "https://aitian.site/",
-        "description": "一款在浏览器本地处理图片的 Gemini 图片水印去除工具，支持自动识别新版和旧版水印，并支持批量导出。",
+        "description": "免费 Gemini 水印去除工具，支持新版 Gemini 和 Nano Banana 图片水印自动识别、多图批量处理、一键 ZIP 导出，图片在浏览器本地处理。",
+        "inLanguage": "zh-CN",
+        "isAccessibleForFree": true,
+        "featureList": [
+          "Gemini 图片水印自动识别",
+          "Nano Banana 图片水印去除",
+          "新版和旧版水印模板检测",
+          "浏览器本地处理图片",
+          "多图批量处理",
+          "处理结果 ZIP 打包下载",
+          "PNG、JPG、WebP 图片支持"
+        ],
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -58,11 +75,93 @@
           },
           {
             "@type": "Question",
-            "name": "现在还需要手动框选吗？",
+            "name": "现在还需要自己选择水印位置吗？",
             "acceptedAnswer": {
               "@type": "Answer",
               "text": "不需要。当前版本会自动检测新版和旧版 Gemini 水印位置，并根据匹配结果选择处理方式。"
             }
+          },
+          {
+            "@type": "Question",
+            "name": "支持批量去除 Gemini 水印吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "支持。你可以一次上传多张 PNG、JPG 或 WebP 图片，工具会自动排队处理，完成后可以单张下载或打包下载全部结果。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Nano Banana 图片也能处理吗？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "可以尝试。当前工具面向 Gemini 生成图片和 Nano Banana 常见图片水印样式做了自动识别，原始导出图通常效果更稳定。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "为什么有些截图处理效果不如原图？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "截图、压缩或二次转存可能改变水印透明度和像素细节。工具会自动切换处理方式，但最佳效果通常来自 Gemini 原始导出图。"
+            }
+          }
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "如何去除 Gemini 图片水印",
+        "description": "使用浏览器本地工具批量去除 Gemini 或 Nano Banana 图片水印。",
+        "totalTime": "PT1M",
+        "supply": [
+          {
+            "@type": "HowToSupply",
+            "name": "Gemini 生成图片"
+          }
+        ],
+        "tool": [
+          {
+            "@type": "HowToTool",
+            "name": "Gemini 水印去除工具"
+          }
+        ],
+        "step": [
+          {
+            "@type": "HowToStep",
+            "name": "上传图片",
+            "text": "选择一张或多张 Gemini 生成图片，支持 PNG、JPG 和 WebP。"
+          },
+          {
+            "@type": "HowToStep",
+            "name": "自动检测水印",
+            "text": "工具会在浏览器中自动识别新版或旧版 Gemini 水印位置。"
+          },
+          {
+            "@type": "HowToStep",
+            "name": "下载结果",
+            "text": "处理完成后单张下载，或将多张结果打包为 ZIP 下载。"
+          }
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "首页",
+            "item": "https://aitian.site/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Gemini 水印去除工具",
+            "item": "https://aitian.site/"
           }
         ]
       }
@@ -87,8 +186,8 @@
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">浏览器本地处理 · 自动识别 · 支持批量</p>
-          <h1>Gemini 图片水印去除工具</h1>
-          <p class="hero-subtitle">上传 Gemini 生成图片后，工具会自动判断新版或旧版水印位置并本地处理；支持一次上传多张图片，处理完成后一键导出。</p>
+          <h1>Gemini 水印去除工具</h1>
+          <p class="hero-subtitle">免费在线去除 Gemini 和 Nano Banana 图片水印。上传原始生成图后，工具会自动判断新版或旧版水印位置并在本地处理；支持一次上传多张图片，处理完成后一键导出。</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#tool">开始处理图片</a>
             <a class="btn btn-plain" href="#privacy-note">查看隐私说明</a>
@@ -160,6 +259,39 @@
         </article>
       </section>
 
+      <section class="seo-band" aria-label="Gemini 水印去除说明">
+        <div class="seo-intro">
+          <p class="eyebrow">Gemini Watermark Remover</p>
+          <h2>面向 Gemini 原图的本地水印去除器</h2>
+          <p>很多 Gemini 或 Nano Banana 生成图会带有半透明菱形水印。这个工具针对常见的新版和旧版水印模板做自动检测，优先在浏览器中完成反向透明度处理，适合希望快速清理预览图、批量素材或临时创作图的用户。</p>
+        </div>
+        <div class="seo-cards">
+          <article>
+            <h3>适合 Gemini 原始导出图</h3>
+            <p>原图保留了水印的透明度和像素关系，自动识别更稳定，去除后也更不容易留下明显痕迹。</p>
+          </article>
+          <article>
+            <h3>支持 Nano Banana 常见水印</h3>
+            <p>新版 Gemini 图片水印和 Nano Banana 相关图片水印样式接近，工具会按新版模板进行检测和处理。</p>
+          </article>
+          <article>
+            <h3>适合批量处理素材</h3>
+            <p>一次上传多张图片后自动排队处理。完成后可以逐张下载，也可以将全部结果打包成 ZIP 文件。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="seo-band compact" aria-label="本地处理和隐私说明">
+        <div>
+          <h2>为什么强调浏览器本地处理？</h2>
+          <p>图片去水印工具经常会处理草稿、账号素材、客户预览图或未发布内容。本工具的主流程使用浏览器 Canvas 完成，不需要把图片上传到服务器，也不会保存你的原图或结果图。处理速度取决于图片尺寸和设备性能。</p>
+        </div>
+        <div>
+          <h2>搜索这个工具时可以用哪些关键词？</h2>
+          <p>如果你之后想快速找到这个页面，可以搜索：Gemini 水印去除、Gemini 图片水印去除、Nano Banana 水印去除、Gemini watermark remover、AI 图片去水印、批量去水印工具。</p>
+        </div>
+      </section>
+
       <section id="guide" class="content-band">
         <div>
           <h2>如何去除 Gemini 水印？</h2>
@@ -179,11 +311,23 @@
         <h2>常见问题</h2>
         <details>
           <summary>这个去水印工具是免费的吗？</summary>
-          <p>是的，当前网页工具免费使用。后续如果增加批量处理或更高级的图片修复能力，可能会单独说明。</p>
+          <p>是的，当前网页工具免费使用。核心处理在浏览器本地完成，不需要登录，也不需要上传图片到服务器。</p>
         </details>
         <details>
           <summary>它怎么判断水印位置？</summary>
           <p>不需要。当前版本会自动检测新版和旧版 Gemini 水印位置，并根据匹配结果选择处理方式。</p>
+        </details>
+        <details>
+          <summary>支持批量去除 Gemini 水印吗？</summary>
+          <p>支持。你可以一次上传多张 PNG、JPG 或 WebP 图片，工具会自动排队处理。完成后可以单张下载，也可以打包下载全部结果。</p>
+        </details>
+        <details>
+          <summary>Nano Banana 图片也能处理吗？</summary>
+          <p>可以尝试。当前工具针对新版 Gemini 和 Nano Banana 常见菱形水印样式做了检测，原始导出图片通常效果更稳定。</p>
+        </details>
+        <details>
+          <summary>为什么截图或压缩图效果会变差？</summary>
+          <p>截图、压缩和二次转存会改变水印透明度和像素关系。工具会自动选择处理方式，但最佳效果通常来自 Gemini 原始导出图。</p>
         </details>
         <details>
           <summary>它能去除所有水印吗？</summary>
