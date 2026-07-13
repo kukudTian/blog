@@ -1,15 +1,45 @@
-const text = {
-  loading: "引擎初始化中...",
-  ready: "引擎已就绪，图片会在浏览器本地处理。",
-  processing: "处理中...",
-  completed: "已完成",
-  pending: "等待中",
-  error: "处理失败",
-  noImages: "请先上传图片。",
-  unsupported: "仅支持 PNG、JPG、WebP 图片。",
-  tooLarge: "单张图片最大支持 20MB。",
-  downloadAll: "下载全部"
+const currentLanguage = document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : "zh";
+const translations = {
+  zh: {
+    loading: "引擎初始化中...",
+    ready: "引擎已就绪，图片会在浏览器本地处理。",
+    processing: "处理中...",
+    completed: "已完成",
+    pending: "等待中",
+    error: "处理失败",
+    noImages: "请先上传图片。",
+    unsupported: "仅支持 PNG、JPG、WebP 图片。",
+    tooLarge: "单张图片最大支持 20MB。",
+    current: "新版",
+    legacy: "旧版",
+    watermark: "水印",
+    reverse: "反向 Alpha",
+    repair: "区域修复",
+    confidence: "匹配度",
+    download: "下载",
+    loadFailed: "引擎加载失败，请刷新页面重试。"
+  },
+  en: {
+    loading: "Engine is starting...",
+    ready: "Engine ready. Images are processed locally in your browser.",
+    processing: "Processing...",
+    completed: "Completed",
+    pending: "Waiting",
+    error: "Failed",
+    noImages: "Please upload images first.",
+    unsupported: "Only PNG, JPG, and WebP images are supported.",
+    tooLarge: "Each image can be up to 20MB.",
+    current: "Current",
+    legacy: "Legacy",
+    watermark: "watermark",
+    reverse: "reverse alpha",
+    repair: "area repair",
+    confidence: "confidence",
+    download: "Download",
+    loadFailed: "Engine failed to load. Please refresh the page and try again."
+  }
 };
+const text = translations[currentLanguage];
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const acceptedTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -391,14 +421,14 @@ function renderQueue() {
           : text.pending;
     const preview = item.processedUrl || item.originalUrl || "";
     const detail = item.variant
-      ? `${item.variant === "current" ? "新版" : "旧版"}水印 · ${item.method === "reverse" ? "反向 Alpha" : "区域修复"} · 匹配度 ${Math.round(item.confidence * 100)}%`
+      ? `${item.variant === "current" ? text.current : text.legacy} ${text.watermark} · ${item.method === "reverse" ? text.reverse : text.repair} · ${text.confidence} ${Math.round(item.confidence * 100)}%`
       : "";
 
     return `
       <article class="queue-card" data-id="${item.id}">
         <div class="queue-preview">
           ${preview ? `<img src="${preview}" alt="${escapeHtml(item.name)}">` : ""}
-          ${item.status === "processing" ? '<div class="queue-overlay">处理中...</div>' : ""}
+          ${item.status === "processing" ? `<div class="queue-overlay">${text.processing}</div>` : ""}
         </div>
         <div class="queue-card-body">
           <p class="queue-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</p>
@@ -407,7 +437,7 @@ function renderQueue() {
             ${detail ? `<span>${detail}</span>` : ""}
           </div>
           ${item.error ? `<p class="queue-error">${escapeHtml(item.error)}</p>` : ""}
-          ${item.status === "completed" ? `<button type="button" class="btn btn-primary queue-download" data-download="${item.id}">下载</button>` : ""}
+          ${item.status === "completed" ? `<button type="button" class="btn btn-primary queue-download" data-download="${item.id}">${text.download}</button>` : ""}
         </div>
       </article>
     `;
@@ -589,6 +619,6 @@ GeminiWatermarkEngine.create()
   })
   .catch((error) => {
     console.error(error);
-    engineStatus.textContent = "引擎加载失败，请刷新页面重试。";
+    engineStatus.textContent = text.loadFailed;
     engineStatus.classList.add("error");
   });

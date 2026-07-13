@@ -86,6 +86,14 @@ img {
   color: var(--brand);
 }
 
+.lang-switch {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--brand) !important;
+  min-width: 44px;
+  text-align: center;
+}
+
 main {
   display: block;
 }
