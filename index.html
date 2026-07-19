@@ -223,6 +223,14 @@
           <p>支持 PNG、JPG、WebP，多张图片会自动排队处理，图片不会上传到服务器。</p>
         </div>
 
+        <div class="mode-panel" aria-label="处理模式">
+          <div class="mode-tabs" role="tablist" aria-label="处理模式">
+            <button type="button" class="mode-tab active" data-mode="auto">通用自动检测</button>
+            <button type="button" class="mode-tab" data-mode="latest">最新水印增强</button>
+          </div>
+          <p class="manual-hint" id="modeHint">通用自动检测适合旧版和常见新版 Gemini 图片水印。</p>
+        </div>
+
         <div id="drop-area">
           <form class="my-form">
             <p>拖放图片到这里，或点击选择多张图片</p>
@@ -354,6 +362,6 @@
     </footer>
 
     <script src="assets/vendor/jszip.min.js"></script>
-    <script src="script.js?v=20260713-i18n"></script>
+    <script src="script.js?v=20260719-latest-watermark"></script>
   </body>
 </html>

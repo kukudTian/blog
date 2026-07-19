@@ -15,9 +15,14 @@ const translations = {
     watermark: "水印",
     reverse: "反向 Alpha",
     repair: "区域修复",
+    latest: "最新增强",
+    fallback: "回退自动",
+    skipped: "未命中",
     confidence: "匹配度",
     download: "下载",
-    loadFailed: "引擎加载失败，请刷新页面重试。"
+    loadFailed: "引擎加载失败，请刷新页面重试。",
+    autoHint: "通用自动检测适合旧版和常见新版 Gemini 图片水印。",
+    latestHint: "最新水印增强会额外检测新版边距、V2 小水印和更靠内的固定水印位置。"
   },
   en: {
     loading: "Engine is starting...",
@@ -34,9 +39,14 @@ const translations = {
     watermark: "watermark",
     reverse: "reverse alpha",
     repair: "area repair",
+    latest: "latest enhanced",
+    fallback: "auto fallback",
+    skipped: "not detected",
     confidence: "confidence",
     download: "Download",
-    loadFailed: "Engine failed to load. Please refresh the page and try again."
+    loadFailed: "Engine failed to load. Please refresh the page and try again.",
+    autoHint: "General Auto works for legacy and common newer Gemini image watermarks.",
+    latestHint: "Latest Watermark also checks newer margins, V2 small marks, and fixed inner watermark positions."
   }
 };
 const text = translations[currentLanguage];
@@ -53,10 +63,23 @@ const completedCount = document.getElementById("completedCount");
 const totalCount = document.getElementById("totalCount");
 const downloadAllBtn = document.getElementById("downloadAllBtn");
 const clearAllBtn = document.getElementById("clearAllBtn");
+const modeTabs = Array.from(document.querySelectorAll("[data-mode]"));
+const modeHint = document.getElementById("modeHint");
 
 let engine = null;
 let queue = [];
 let processingQueue = false;
+let selectedMode = "auto";
+
+function updateMode(mode) {
+  selectedMode = mode === "latest" ? "latest" : "auto";
+  modeTabs.forEach((tab) => {
+    const active = tab.dataset.mode === selectedMode;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  if (modeHint) modeHint.textContent = selectedMode === "latest" ? text.latestHint : text.autoHint;
+}
 
 function preventDefaults(event) {
   event.preventDefault();
@@ -78,6 +101,19 @@ function loadImage(src) {
     image.onerror = reject;
     image.src = src;
   });
+}
+
+async function loadFloat32AlphaMap(src, expectedLength) {
+  const response = await fetch(src, { cache: "force-cache" });
+  if (!response.ok) throw new Error(`Failed to load ${src}`);
+  const buffer = await response.arrayBuffer();
+  if (buffer.byteLength % 4 !== 0) {
+    throw new Error(`Unexpected alpha map byte alignment for ${src}`);
+  }
+  if (expectedLength && buffer.byteLength !== expectedLength * 4) {
+    console.warn(`Using ${buffer.byteLength / 4} alpha values from ${src}; expected ${expectedLength}.`);
+  }
+  return new Float32Array(buffer);
 }
 
 function captureImage(image) {
@@ -144,25 +180,99 @@ function clampArea(area, imageData) {
   return { x, y, width, height };
 }
 
+function cloneImageData(imageData) {
+  return new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height);
+}
+
+function createRegionImageData(sourceImageData, area) {
+  const position = clampArea(area, sourceImageData);
+  const data = new Uint8ClampedArray(position.width * position.height * 4);
+  for (let row = 0; row < position.height; row += 1) {
+    const sourceStart = ((position.y + row) * sourceImageData.width + position.x) * 4;
+    const sourceEnd = sourceStart + position.width * 4;
+    data.set(sourceImageData.data.subarray(sourceStart, sourceEnd), row * position.width * 4);
+  }
+  return new ImageData(data, position.width, position.height);
+}
+
+function normalizedCrossCorrelation(a, b) {
+  if (a.length !== b.length || !a.length) return 0;
+  let sumA = 0;
+  let sumB = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    sumA += a[index];
+    sumB += b[index];
+  }
+  const meanA = sumA / a.length;
+  const meanB = sumB / b.length;
+  let numerator = 0;
+  let varianceA = 0;
+  let varianceB = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    const da = a[index] - meanA;
+    const db = b[index] - meanB;
+    numerator += da * db;
+    varianceA += da * da;
+    varianceB += db * db;
+  }
+  const denominator = Math.sqrt(varianceA * varianceB);
+  return denominator > 1e-8 ? numerator / denominator : 0;
+}
+
+function grayscaleRegion(imageData, area) {
+  const position = clampArea(area, imageData);
+  const values = new Float32Array(position.width * position.height);
+  for (let row = 0; row < position.height; row += 1) {
+    for (let col = 0; col < position.width; col += 1) {
+      const offset = ((position.y + row) * imageData.width + position.x + col) * 4;
+      values[row * position.width + col] =
+        (0.2126 * imageData.data[offset] + 0.7152 * imageData.data[offset + 1] + 0.0722 * imageData.data[offset + 2]) / 255;
+    }
+  }
+  return values;
+}
+
+function sobelMagnitude(values, width, height) {
+  const output = new Float32Array(width * height);
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const index = y * width + x;
+      const gx =
+        -values[index - width - 1] - 2 * values[index - 1] - values[index + width - 1] +
+        values[index - width + 1] + 2 * values[index + 1] + values[index + width + 1];
+      const gy =
+        -values[index - width - 1] - 2 * values[index - width] - values[index - width + 1] +
+        values[index + width - 1] + 2 * values[index + width] + values[index + width + 1];
+      output[index] = Math.sqrt(gx * gx + gy * gy);
+    }
+  }
+  return output;
+}
+
 class GeminiWatermarkEngine {
   constructor(captures) {
     this.captures = captures;
     this.alphaMaps = {};
+    this.negativeAlphaMaps = new WeakMap();
   }
 
   static async create() {
-    const [bg48, bg96, bgB36, bgB96] = await Promise.all([
+    const [bg48, bg96, bgB36, bgB96, bgLatest96, alpha36V2] = await Promise.all([
       loadImage("assets/gemini-watermark-remover/bg_48.png"),
       loadImage("assets/gemini-watermark-remover/bg_96.png"),
       loadImage("assets/gemini-watermark-remover/bg_b_36.png"),
-      loadImage("assets/gemini-watermark-remover/bg_b_96.png")
+      loadImage("assets/gemini-watermark-remover/bg_b_96.png"),
+      loadImage("assets/gemini-watermark-remover/bg_96_20260520.png"),
+      loadFloat32AlphaMap("assets/gemini-watermark-remover/bg_36_v2.bin", 36 * 36)
     ]);
 
     return new GeminiWatermarkEngine({
       legacy48: captureImage(bg48),
       legacy96: captureImage(bg96),
       current36: captureImage(bgB36),
-      current96: captureImage(bgB96)
+      current96: captureImage(bgB96),
+      latest96: captureImage(bgLatest96),
+      latest36V2: alpha36V2
     });
   }
 
@@ -184,6 +294,28 @@ class GeminiWatermarkEngine {
       this.alphaMaps[key] = imageDataToAlphaMap(this.getCapture(variant, size));
     }
     return this.alphaMaps[key];
+  }
+
+  getLatestAlphaMap(key, size) {
+    if (key === "latest36V2") return this.captures.latest36V2;
+    if (key === "latest96") {
+      if (!this.alphaMaps.latest96) this.alphaMaps.latest96 = imageDataToAlphaMap(this.captures.latest96);
+      return this.alphaMaps.latest96;
+    }
+    if (key === "legacy48") return this.getAlphaMap("legacy", 48);
+    if (key === "legacy96") return this.getAlphaMap("legacy", 96);
+    if (key === "current36") return this.getAlphaMap("current", 36);
+    if (key === "current96") return this.getAlphaMap("current", 96);
+    return this.getAlphaMap("legacy", size);
+  }
+
+  getNegativeAlphaMap(alphaMap) {
+    const cached = this.negativeAlphaMaps.get(alphaMap);
+    if (cached) return cached;
+    const negative = new Float32Array(alphaMap.length);
+    for (let index = 0; index < alphaMap.length; index += 1) negative[index] = -alphaMap[index];
+    this.negativeAlphaMaps.set(alphaMap, negative);
+    return negative;
   }
 
   getCandidates(width, height) {
@@ -256,22 +388,134 @@ class GeminiWatermarkEngine {
     const data = imageData.data;
     const area = clampArea(candidate.position, imageData);
     const alphaMap = candidate.alphaMap;
+    const alphaGain = Number.isFinite(candidate.alphaGain) ? candidate.alphaGain : 1;
 
     for (let row = 0; row < area.height; row += 1) {
       for (let col = 0; col < area.width; col += 1) {
-        let alpha = alphaMap[row * area.width + col];
+        const rawAlpha = alphaMap[row * area.width + col] || 0;
+        let alpha = Math.abs(rawAlpha) * alphaGain;
         if (alpha < 0.002) continue;
 
         alpha = Math.min(alpha, 0.99);
         const remaining = 1 - alpha;
         const offset = ((area.y + row) * imageData.width + area.x + col) * 4;
+        const logoValue = rawAlpha < 0 ? 0 : 255;
 
         for (let channel = 0; channel < 3; channel += 1) {
-          const restored = (data[offset + channel] - 255 * alpha) / remaining;
+          const restored = (data[offset + channel] - logoValue * alpha) / remaining;
           data[offset + channel] = Math.max(0, Math.min(255, Math.round(restored)));
         }
       }
     }
+  }
+
+  createLatestCandidates(width, height) {
+    const dynamicMargin = getCurrentSmallMargin(width, height);
+    const configs = [
+      { variant: "latest-v2", size: 36, marginRight: dynamicMargin, marginBottom: dynamicMargin, alphaKey: "latest36V2", source: "v2-small-scaled", priority: 0 },
+      { variant: "latest-v2", size: 36, marginRight: 96, marginBottom: 96, alphaKey: "latest36V2", source: "v2-small-fixed-96", priority: 1 },
+      { variant: "latest-new-margin", size: 96, marginRight: 192, marginBottom: 192, alphaKey: "latest96", source: "20260520-new-margin", priority: 1 },
+      { variant: "current-large-margin", size: 48, marginRight: 96, marginBottom: 96, alphaKey: "legacy48", source: "current-large-margin", priority: 2 },
+      { variant: "legacy", size: 96, marginRight: 64, marginBottom: 64, alphaKey: "legacy96", source: "legacy-96px", priority: 3 },
+      { variant: "legacy", size: 48, marginRight: 32, marginBottom: 32, alphaKey: "legacy48", source: "legacy-48px", priority: 4 },
+      { variant: "current", size: 36, marginRight: dynamicMargin, marginBottom: dynamicMargin, alphaKey: "current36", source: "current-36px", priority: 4 }
+    ];
+
+    return configs
+      .map((config) => ({
+        variant: config.variant,
+        size: config.size,
+        source: config.source,
+        priority: config.priority,
+        position: getWatermarkArea(width, height, {
+          logoSize: config.size,
+          marginRight: config.marginRight,
+          marginBottom: config.marginBottom
+        }),
+        alphaMap: this.getLatestAlphaMap(config.alphaKey, config.size),
+        confidence: 0,
+        alphaGain: 1
+      }))
+      .filter((candidate) => candidate.position.x >= 0 && candidate.position.y >= 0);
+  }
+
+  scoreLatestCandidate(imageData, candidate) {
+    const area = clampArea(candidate.position, imageData);
+    if (area.width !== candidate.size || area.height !== candidate.size) return null;
+    const alphaMap = candidate.alphaMap;
+    const patch = grayscaleRegion(imageData, area);
+    if (patch.length !== alphaMap.length) return null;
+    const spatial = normalizedCrossCorrelation(patch, alphaMap);
+    const gradient = normalizedCrossCorrelation(
+      sobelMagnitude(patch, area.width, area.height),
+      sobelMagnitude(alphaMap, area.width, area.height)
+    );
+    return { spatial, gradient };
+  }
+
+  evaluateLatestCandidate(imageData, baseCandidate) {
+    const gains = [0.6, 1, 1.1, 1.15, 1.3, 0.45, 0.7, 0.85, 0.55, 0.3];
+    const maps = [baseCandidate.alphaMap, this.getNegativeAlphaMap(baseCandidate.alphaMap)];
+    let best = null;
+
+    maps.forEach((alphaMap, polarityIndex) => {
+      gains.forEach((alphaGain) => {
+        const candidate = { ...baseCandidate, alphaMap, alphaGain };
+        const before = this.scoreLatestCandidate(imageData, candidate);
+        if (!before) return;
+        const region = createRegionImageData(imageData, candidate.position);
+        this.removeReverseAlpha(region, {
+          ...candidate,
+          position: { x: 0, y: 0, width: region.width, height: region.height }
+        });
+        const after = this.scoreLatestCandidate(region, {
+          ...candidate,
+          position: { x: 0, y: 0, width: region.width, height: region.height }
+        });
+        if (!after) return;
+
+        const originalEvidence = Math.max(0, before.spatial) * 0.6 + Math.max(0, before.gradient) * 0.4;
+        const residual = Math.abs(after.spatial) + Math.max(0, after.gradient) * 0.6;
+        const improvement = Math.abs(before.spatial) - Math.abs(after.spatial);
+        const accepted = originalEvidence >= 0.08 && (improvement >= 0.035 || originalEvidence >= 0.22);
+        const scored = {
+          ...candidate,
+          source: polarityIndex ? `${candidate.source}+dark` : candidate.source,
+          confidence: Math.max(0, Math.min(1, originalEvidence)),
+          improvement,
+          validationCost: residual,
+          accepted
+        };
+
+        if (!best || (scored.accepted !== best.accepted ? scored.accepted : scored.validationCost < best.validationCost)) {
+          best = scored;
+        }
+      });
+    });
+
+    return best;
+  }
+
+  detectLatest(imageData) {
+    let best = null;
+    this.createLatestCandidates(imageData.width, imageData.height).forEach((candidate) => {
+      const evaluated = this.evaluateLatestCandidate(imageData, candidate);
+      if (!evaluated) return;
+      if (!best) {
+        best = evaluated;
+        return;
+      }
+      if (evaluated.accepted !== best.accepted) {
+        if (evaluated.accepted) best = evaluated;
+        return;
+      }
+      if (evaluated.accepted && Math.abs(evaluated.validationCost - best.validationCost) > 0.005) {
+        if (evaluated.validationCost < best.validationCost) best = evaluated;
+        return;
+      }
+      if (evaluated.confidence > best.confidence) best = evaluated;
+    });
+    return best;
   }
 
   repairRect(imageData, area, radius = 10) {
@@ -384,16 +628,35 @@ class GeminiWatermarkEngine {
     return new ImageData(output, width, height);
   }
 
-  process(imageData) {
+  processAuto(imageData, options = {}) {
+    const allowRepair = options.allowRepair !== false;
     const candidate = this.detect(imageData);
     if (candidate.confidence >= 0.08) {
       this.removeReverseAlpha(imageData, candidate);
       candidate.method = "reverse";
-    } else {
+    } else if (allowRepair) {
       this.repairRect(imageData, candidate.position, 10);
       candidate.method = "repair";
+    } else {
+      candidate.method = "skipped";
     }
     return candidate;
+  }
+
+  processLatest(imageData) {
+    const candidate = this.detectLatest(imageData);
+    if (candidate && candidate.accepted) {
+      this.removeReverseAlpha(imageData, candidate);
+      candidate.method = "latest";
+      return candidate;
+    }
+    const fallback = this.processAuto(imageData, { allowRepair: false });
+    fallback.method = fallback.method === "skipped" ? "skipped" : `${fallback.method}+fallback`;
+    return fallback;
+  }
+
+  process(imageData, mode = "auto") {
+    return mode === "latest" ? this.processLatest(imageData) : this.processAuto(imageData);
   }
 }
 
@@ -420,8 +683,22 @@ function renderQueue() {
           ? text.error
           : text.pending;
     const preview = item.processedUrl || item.originalUrl || "";
+    const methodText = item.method === "latest"
+      ? text.latest
+      : String(item.method || "").includes("fallback")
+        ? text.fallback
+      : item.method === "reverse"
+        ? text.reverse
+        : item.method === "skipped"
+          ? text.skipped
+          : text.repair;
+    const variantText = item.variant === "current"
+      ? text.current
+      : item.variant === "legacy"
+        ? text.legacy
+        : text.latest;
     const detail = item.variant
-      ? `${item.variant === "current" ? text.current : text.legacy} ${text.watermark} · ${item.method === "reverse" ? text.reverse : text.repair} · ${text.confidence} ${Math.round(item.confidence * 100)}%`
+      ? `${variantText} ${text.watermark} · ${methodText} · ${text.confidence} ${Math.round(item.confidence * 100)}%`
       : "";
 
     return `
@@ -470,7 +747,8 @@ function addFiles(fileList) {
     error: null,
     variant: null,
     confidence: 0,
-    method: null
+    method: null,
+    mode: selectedMode
   }));
 
   queue = [...queue, ...items];
@@ -491,7 +769,7 @@ async function processPendingItems() {
     try {
       const image = await loadImage(item.originalUrl);
       const imageData = captureImage(image);
-      const candidate = engine.process(imageData);
+      const candidate = engine.process(imageData, item.mode);
 
       const canvas = document.createElement("canvas");
       canvas.width = imageData.width;
@@ -609,6 +887,10 @@ queueList.addEventListener("click", (event) => {
 
 downloadAllBtn.addEventListener("click", downloadAll);
 clearAllBtn.addEventListener("click", clearQueue);
+modeTabs.forEach((tab) => {
+  tab.addEventListener("click", () => updateMode(tab.dataset.mode));
+});
+updateMode(selectedMode);
 
 GeminiWatermarkEngine.create()
   .then((createdEngine) => {

@@ -223,6 +223,14 @@
           <p>Supports PNG, JPG, and WebP. Multiple images are queued automatically, and files stay in your browser.</p>
         </div>
 
+        <div class="mode-panel" aria-label="Processing mode">
+          <div class="mode-tabs" role="tablist" aria-label="Processing mode">
+            <button type="button" class="mode-tab active" data-mode="auto">General Auto</button>
+            <button type="button" class="mode-tab" data-mode="latest">Latest Watermark</button>
+          </div>
+          <p class="manual-hint" id="modeHint">General Auto works for legacy and common newer Gemini image watermarks.</p>
+        </div>
+
         <div id="drop-area">
           <form class="my-form">
             <p>Drop images here, or click to choose multiple files</p>
@@ -354,6 +362,6 @@
     </footer>
 
     <script src="assets/vendor/jszip.min.js"></script>
-    <script src="script.js?v=20260713-i18n"></script>
+    <script src="script.js?v=20260719-latest-watermark"></script>
   </body>
 </html>
